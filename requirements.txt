@@ -1,0 +1,6 @@
+astakosclient
+kamaki
+flask
+Flask-SQLAlchemy
+Flask-Script
+
