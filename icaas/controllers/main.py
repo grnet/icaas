@@ -99,29 +99,41 @@ def icaas_abort(status_code, message):
     return response
 
 
-@main.route('/icaas/<buildid>', methods=['PUT', 'DELETE', 'GET'])
+@main.route('/icaas/<buildid>', methods=['PUT'])
+def updatebuild(buildid):
+    contents = request.get_json()
+    if "X-Icaas-Token" not in request.headers:
+        abort(401)
+
+    token = request.headers["X-Icaas-Token"]
+    if contents:
+        status = contents.get("status", None)
+        reason = contents.get("reason", None)
+        if not status:
+            return icass_abort(400, "Field 'status' is missing")
+        if status not in ["ERROR", "COMPLETED"]:
+            return icass_abort(400, "Bad request: Invalid 'status' field")
+
+        build = Build.query.filter_by(id=buildid, token=token).first()
+        if build is None:
+            return icass_abort(404, "Build not found")
+
+        build.status = status
+        if reason:
+            build.erreason = reason
+
+        db.session.commit()
+        resp = Response()
+        resp.status_code = 200
+        return resp
+
+    abort(400)
+
+
+@main.route('/icaas/<buildid>', methods=['DELETE', 'GET'])
 @login_required
-def update_build(user, buildid):
-    if request.method == 'PUT':
-        contents = request.get_json()
-        if contents:
-            status = contents.get("status", None)
-            reason = contents.get("reason", None)
-            if not status:
-                return icaas_abort(400, "Field 'status' is missing")
-            if status not in ["ERROR", "COMPLETED"]:
-                return icaas_abort(400, "Bad request: Invalid 'status' field")
-            build = Build.query.filter_by(id=buildid).first()
-            build.status = status
-            if reason:
-                build.erreason = reason
-
-            db.session.commit()
-            resp = Response()
-            resp.status_code = 200
-            return resp
-
-    elif request.method == 'DELETE':
+def buildview(user, buildid):
+    if request.method == 'DELETE':
         build = Build.query.filter_by(id=buildid).first()
         build.deleted = True
         db.session.commit()
@@ -168,8 +180,9 @@ def get_builds(user):
         build = Build(user.id, name, url, 0, p_url, p_log)
         db.session.add(build)
         db.session.commit()
-        person = create_ini_file(url, token, name, p_log, p_url,
-                                 settings.ICAAS_ENDPOINT + str(build.id))
+        status = settings.ICAAS_ENDPOINT + str(build.id) + "#" + \
+                 str(build.token)
+        person = create_ini_file(url, token, name, p_log, p_url, status)
         prn = []
         prn.append(dict(contents=b64encode(person), path=settings.AGENT_CFG,
                    owner='root', group='root', mode=0600))
@@ -183,7 +196,8 @@ def get_builds(user):
         db.session.commit()
         return jsonify(id=srv["id"], name=name, url=url)
 
-    builds = Build.query.filter(Build.tenant_id == user.id, Build.deleted == False).all()
+    builds = Build.query.filter(Build.tenant_id == user.id,
+                                Build.deleted == False).all()
     resp = {"builds": []}
     for i in builds:
         resp["builds"].append({"id": i.id, "name": i.name})

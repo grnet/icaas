@@ -2,7 +2,7 @@
 FLAVOR_ID = '42'
 
 # Image ID to use for the host VM
-IMAGE_ID = 'e4e3960c-fd1f-4344-b7e9-f21dde1ebb6c'
+IMAGE_ID = 'b1acb3fe-0496-4510-867c-4cf5f33b196d'
 
 # Astakos authentication endpoint
 AUTH_URL = 'https://accounts.okeanos.grnet.gr/identity/v2.0'

@@ -18,7 +18,7 @@
 
 from flask.ext.sqlalchemy import SQLAlchemy
 from datetime import datetime
-
+from uuid import uuid4
 
 db = SQLAlchemy()
 
@@ -37,6 +37,7 @@ class Build(db.Model):
                         onupdate=datetime.now)
     deleted = db.Column(db.Boolean, default=False)
     erreason = db.Column(db.String(256))
+    token = db.Column(db.String(32))
 
     def __init__(self, tenant_id, name, url, vm_id, p_url, p_log):
         self.tenant_id = tenant_id
@@ -45,6 +46,7 @@ class Build(db.Model):
         self.vm_id = vm_id
         self.p_url = p_url
         self.p_log = p_log
+        self.token = str(uuid4()).replace('-', '')
 
     def __repr__(self):
         return '<Build: id %s, name %s>' % (self.id, self.name)
