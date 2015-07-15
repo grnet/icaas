@@ -15,3 +15,5 @@
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+# vim: ai ts=4 sts=4 et sw=4 ft=python

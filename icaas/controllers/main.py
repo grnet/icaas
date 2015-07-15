@@ -207,3 +207,5 @@ def get_builds(user):
         resp["builds"].append({"id": i.id, "name": i.name})
 
     return jsonify(resp)
+
+# vim: ai ts=4 sts=4 et sw=4 ft=python

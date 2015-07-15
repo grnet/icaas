@@ -46,3 +46,5 @@ def create_app(object_name, env="prod"):
     app.register_blueprint(main)
 
     return app
+
+# vim: ai ts=4 sts=4 et sw=4 ft=python

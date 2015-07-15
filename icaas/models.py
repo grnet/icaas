@@ -62,3 +62,5 @@ class User(db.Model):
 
     def __repr__(self):
         return '<Build: id %s, uuid %s>' % (self.id, self.uuid)
+
+# vim: ai ts=4 sts=4 et sw=4 ft=python
