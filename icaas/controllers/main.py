@@ -159,43 +159,46 @@ def buildview(user, buildid):
     return icaas_abort(400, "Bad Request")
 
 
-@main.route('/icaas', methods=['GET', 'POST'])
+@main.route('/icaas', methods=['POST'])
+@login_required
+def post_builds(user):
+    token = request.headers["X-Auth-Token"]
+    contents = request.get_json()
+    if contents:
+        name = contents.get("name", None)
+        url = contents.get("url", None)
+        if not name:
+            return icaas_abort(400, "Field 'name' is missing")
+        if not url:
+            return icaas_abort(400, "Field 'url' is missing")
+
+    p_url = "pithos/" + name + str(datetime.now())
+    p_log = "pithos/" + name + str(datetime.now())
+    compute_client = cyclades.CycladesComputeClient(settings.COMPUTE_URL,
+                                                    token)
+    build = Build(user.id, name, url, 0, p_url, p_log)
+    db.session.add(build)
+    db.session.commit()
+    status = settings.ICAAS_ENDPOINT + str(build.id) + "#" + \
+             str(build.token)
+    person = create_ini_file(url, token, name, p_log, p_url, status)
+    prn = []
+    prn.append(dict(contents=b64encode(person), path=settings.AGENT_CFG,
+               owner='root', group='root', mode=0600))
+    prn.append(dict(contents=b64encode("empty"), path=settings.AGENT_INIT,
+               owner='root', group='root', mode=0600))
+    srv = compute_client.create_server("VM_" + name + str(datetime.now()),
+                                       settings.FLAVOR_ID,
+                                       settings.IMAGE_ID, personality=prn)
+    build.vm_id = srv['id']
+    db.session.add(build)
+    db.session.commit()
+    return jsonify(id=build.id, name=name, url=url)
+
+
+@main.route('/icaas', methods=['GET'])
 @login_required
 def get_builds(user):
-    token = request.headers["X-Auth-Token"]
-    if request.method == 'POST':
-        contents = request.get_json()
-        if contents:
-            name = contents.get("name", None)
-            url = contents.get("url", None)
-            if not name:
-                return icaas_abort(400, "Field 'name' is missing")
-            if not url:
-                return icaas_abort(400, "Field 'url' is missing")
-
-        p_url = "pithos/" + name + str(datetime.now())
-        p_log = "pithos/" + name + str(datetime.now())
-        compute_client = cyclades.CycladesComputeClient(settings.COMPUTE_URL,
-                                                        token)
-        build = Build(user.id, name, url, 0, p_url, p_log)
-        db.session.add(build)
-        db.session.commit()
-        status = settings.ICAAS_ENDPOINT + str(build.id) + "#" + \
-                 str(build.token)
-        person = create_ini_file(url, token, name, p_log, p_url, status)
-        prn = []
-        prn.append(dict(contents=b64encode(person), path=settings.AGENT_CFG,
-                   owner='root', group='root', mode=0600))
-        prn.append(dict(contents=b64encode("empty"), path=settings.AGENT_INIT,
-                   owner='root', group='root', mode=0600))
-        srv = compute_client.create_server("VM_" + name + str(datetime.now()),
-                                           settings.FLAVOR_ID,
-                                           settings.IMAGE_ID, personality=prn)
-        build.vm_id = srv['id']
-        db.session.add(build)
-        db.session.commit()
-        return jsonify(id=build.id, name=name, url=url)
-
     builds = Build.query.filter(Build.tenant_id == user.id,
                                 Build.deleted == False).all()
     resp = {"builds": []}
