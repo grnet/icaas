@@ -38,7 +38,7 @@ from icaas import settings
 import ConfigParser
 import StringIO
 
-https.patch_with_certs('/etc/ssl/certs/ca-certificates.crt')
+https.patch_with_certs(settings.KAMAKI_SSL_LOCATION)
 
 main = Blueprint('main', __name__)
 
@@ -176,7 +176,7 @@ def get_builds(user):
         p_url = "pithos/" + name + str(datetime.now())
         p_log = "pithos/" + name + str(datetime.now())
         compute_client = cyclades.CycladesComputeClient(settings.COMPUTE_URL,
-                                                        TOKEN)
+                                                        token)
         build = Build(user.id, name, url, 0, p_url, p_log)
         db.session.add(build)
         db.session.commit()
