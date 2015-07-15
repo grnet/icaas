@@ -39,7 +39,6 @@ def create_app(object_name, env="prod"):
     app.config.from_object(object_name)
     app.config['ENV'] = env
 
-
     # initialize SQLAlchemy
     db.init_app(app)
 

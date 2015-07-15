@@ -62,4 +62,3 @@ class User(db.Model):
 
     def __repr__(self):
         return '<Build: id %s, uuid %s>' % (self.id, self.uuid)
-

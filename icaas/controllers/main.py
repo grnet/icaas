@@ -76,7 +76,8 @@ def login_required(f):
         except:
             abort(500)
 
-        user = User.query.filter_by(uuid=astakos['access']['user']['id']).first()
+        uuid = astakos['access']['user']['id']
+        user = User.query.filter_by(uuid=uuid).first()
         if not user:
             user = User(astakos['access']['user']['id'])
             user.token = token
@@ -180,7 +181,7 @@ def post_builds(user):
     db.session.add(build)
     db.session.commit()
     status = settings.ICAAS_ENDPOINT + str(build.id) + "#" + \
-             str(build.token)
+        str(build.token)
     person = create_ini_file(url, token, name, p_log, p_url, status)
     prn = []
     prn.append(dict(contents=b64encode(person), path=settings.AGENT_CFG,
@@ -200,7 +201,7 @@ def post_builds(user):
 @login_required
 def get_builds(user):
     builds = Build.query.filter(Build.tenant_id == user.id,
-                                Build.deleted == False).all()
+                                Build.deleted is False).all()
     resp = {"builds": []}
     for i in builds:
         resp["builds"].append({"id": i.id, "name": i.name})
