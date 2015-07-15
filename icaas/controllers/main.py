@@ -194,7 +194,7 @@ def get_builds(user):
         build.vm_id = srv['id']
         db.session.add(build)
         db.session.commit()
-        return jsonify(id=srv["id"], name=name, url=url)
+        return jsonify(id=build.id, name=name, url=url)
 
     builds = Build.query.filter(Build.tenant_id == user.id,
                                 Build.deleted == False).all()
