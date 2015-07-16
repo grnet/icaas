@@ -43,7 +43,7 @@ https.patch_with_certs(settings.KAMAKI_SSL_LOCATION)
 main = Blueprint('main', __name__)
 
 
-def create_ini_file(url, token, name, p_log, p_url, status):
+def create_manifest(url, token, name, p_log, p_url, status):
     config = ConfigParser.ConfigParser()
     config.add_section("service")
     config.add_section("image")
@@ -56,9 +56,9 @@ def create_ini_file(url, token, name, p_log, p_url, status):
     config.set("service", "log", p_log)
     config.set("service", "status", status)
 
-    tmp_str = StringIO.StringIO()
-    config.write(tmp_str)
-    return tmp_str.getvalue()
+    manifest = StringIO.StringIO()
+    config.write(manifest)
+    return manifest.getvalue()
 
 
 def login_required(f):
@@ -101,7 +101,8 @@ def icaas_abort(status_code, message):
 
 
 @main.route('/icaas/<buildid>', methods=['PUT'])
-def updatebuild(buildid):
+def update(buildid):
+    """Update the build status"""
     contents = request.get_json()
     if "X-Icaas-Token" not in request.headers:
         abort(401)
@@ -111,58 +112,63 @@ def updatebuild(buildid):
         status = contents.get("status", None)
         reason = contents.get("reason", None)
         if not status:
-            return icass_abort(400, "Field 'status' is missing")
+            return icaas_abort(400, "Field 'status' is missing")
         if status not in ["ERROR", "COMPLETED"]:
-            return icass_abort(400, "Bad request: Invalid 'status' field")
+            return icaas_abort(400, "Bad request: Invalid 'status' field")
 
         build = Build.query.filter_by(id=buildid, token=token).first()
         if build is None:
-            return icass_abort(404, "Build not found")
+            return icaas_abort(404, "Build not found")
 
         build.status = status
         if reason:
             build.erreason = reason
 
         db.session.commit()
-        resp = Response()
-        resp.status_code = 200
-        return resp
+        response = Response()
+        response.status_code = 200
+        return response
 
     abort(400)
 
 
-@main.route('/icaas/<buildid>', methods=['DELETE', 'GET'])
+@main.route('/icaas/<buildid>', methods=['GET'])
 @login_required
-def buildview(user, buildid):
-    if request.method == 'DELETE':
-        build = Build.query.filter_by(id=buildid).first()
-        build.deleted = True
-        db.session.commit()
-        resp = Response()
-        resp.status_code = 200
-        return resp
+def view(user, buildid):
+    """View a specific build entry"""
+    build = Build.query.filter_by(id=buildid).first()
+    if not build:
+        return icaas_abort(400, "Build id not valid")
 
-    elif request.method == 'GET':
-        build = Build.query.filter_by(id=buildid).first()
-        if not build:
-            return icaas_abort(400, "out")
-        d = {"id": build.id,
-             "name:": build.name,
-             "url": build.url,
-             "status": build.status,
-             "p_url": build.p_url,
-             "p_log": build.p_log,
-             "created": build.created,
-             "updated": build.updated,
-             "deleted": build.deleted}
-        return jsonify({"build": d})
+    d = {"id": build.id,
+         "name:": build.name,
+         "url": build.url,
+         "status": build.status,
+         "p_url": build.p_url,
+         "p_log": build.p_log,
+         "created": build.created,
+         "updated": build.updated,
+         "deleted": build.deleted}
 
-    return icaas_abort(400, "Bad Request")
+    return jsonify({"build": d})
+
+
+@main.route('/icaas/<buildid>', methods=['DELETE'])
+@login_required
+def delete(user, buildid):
+    """Delete an existing build entry"""
+    build = Build.query.filter_by(id=buildid).first()
+    build.deleted = True
+    db.session.commit()
+    resp = Response()
+    resp.status_code = 200
+    return resp
 
 
 @main.route('/icaas', methods=['POST'])
 @login_required
-def post_builds(user):
+def create(user):
+    """Create a new image with ICaaS"""
     token = request.headers["X-Auth-Token"]
     contents = request.get_json()
     if contents:
@@ -172,6 +178,8 @@ def post_builds(user):
             return icaas_abort(400, "Field 'name' is missing")
         if not url:
             return icaas_abort(400, "Field 'url' is missing")
+    else:
+        return icaas_abort(400, "Fields 'name' and 'url' are missing")
 
     p_url = "pithos/" + name + str(datetime.now())
     p_log = "pithos/" + name + str(datetime.now())
@@ -180,17 +188,17 @@ def post_builds(user):
     build = Build(user.id, name, url, 0, p_url, p_log)
     db.session.add(build)
     db.session.commit()
-    status = settings.ICAAS_ENDPOINT + str(build.id) + "#" + \
-        str(build.token)
-    person = create_ini_file(url, token, name, p_log, p_url, status)
-    prn = []
-    prn.append(dict(contents=b64encode(person), path=settings.AGENT_CFG,
-               owner='root', group='root', mode=0600))
-    prn.append(dict(contents=b64encode("empty"), path=settings.AGENT_INIT,
-               owner='root', group='root', mode=0600))
+    status = settings.ICAAS_ENDPOINT + str(build.id) + "#" + str(build.token)
+    manifest = create_manifest(url, token, name, p_log, p_url, status)
+    personality = [
+        {'contents': b64encode(manifest), 'path': settings.AGENT_CFG,
+         'owner': 'root', 'group': 'root', 'mode': 0600},
+        {'contents': b64encode("empty"), 'path': settings.AGENT_INIT,
+         'owner': 'root', 'group': 'root', 'mode': 0600}]
     srv = compute_client.create_server("VM_" + name + str(datetime.now()),
                                        settings.FLAVOR_ID,
-                                       settings.IMAGE_ID, personality=prn)
+                                       settings.IMAGE_ID,
+                                       personality=personality)
     build.vm_id = srv['id']
     db.session.add(build)
     db.session.commit()
@@ -199,13 +207,12 @@ def post_builds(user):
 
 @main.route('/icaas', methods=['GET'])
 @login_required
-def get_builds(user):
+def list_builds(user):
+    """List the builds owned by a user"""
     builds = Build.query.filter(Build.tenant_id == user.id,
-                                Build.deleted is False).all()
-    resp = {"builds": []}
-    for i in builds:
-        resp["builds"].append({"id": i.id, "name": i.name})
+                                Build.deleted == False).all()  # noqa
+    result = [{"id": i.id, "name": i.name} for i in builds]
 
-    return jsonify(resp)
+    return jsonify({"builds": result})
 
 # vim: ai ts=4 sts=4 et sw=4 ft=python
