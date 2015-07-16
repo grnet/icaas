@@ -24,22 +24,37 @@ db = SQLAlchemy()
 
 
 class Build(db.Model):
+    """Represents the Build model"""
+    # Unique build ID
     id = db.Column(db.Integer, primary_key=True, index=True)
+    # User ID
     tenant_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    # Image Registration Name
     name = db.Column(db.String(256), unique=False)
+    # Build status (Creating|Completed|Error)
     status = db.Column(db.String(32), default="Creating")
+    # ID of the icaas agent VM
     vm_id = db.Column(db.String(128))
+    # User Provided Image URL
     url = db.Column(db.String(256), unique=False)
+    # Pithos Image Object
     p_url = db.Column(db.String(256), unique=False)
+    # ICaaS creation log in Pithos
     p_log = db.Column(db.String(256), unique=False)
+    # Build creation time
     created = db.Column(db.DateTime, default=datetime.now)
+    # Build update time
     updated = db.Column(db.DateTime, default=datetime.now,
                         onupdate=datetime.now)
+    # Is the build deleted?
     deleted = db.Column(db.Boolean, default=False)
+    # Reason of Error
     erreason = db.Column(db.String(256))
+    # ICaaS session token
     token = db.Column(db.String(32))
 
     def __init__(self, tenant_id, name, url, vm_id, p_url, p_log):
+        """Initialize a Build object"""
         self.tenant_id = tenant_id
         self.name = name
         self.url = url
@@ -53,11 +68,16 @@ class Build(db.Model):
 
 
 class User(db.Model):
+    """Represents the User model"""
+    # Unique User ID
     id = db.Column(db.Integer, primary_key=True, index=True)
+    # Synnefo UUID of the User
     uuid = db.Column(db.String(256), unique=True, index=True)
+    # Synnefo User token
     token = db.Column(db.String(32))
 
     def __init__(self, uuid):
+        """Initialize a User object"""
         self.uuid = uuid
 
     def __repr__(self):
