@@ -28,19 +28,19 @@ class Build(db.Model):
     # Unique build ID
     id = db.Column(db.Integer, primary_key=True, index=True)
     # User ID
-    tenant_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    user = db.Column(db.Integer, db.ForeignKey('user.id'))
     # Image Registration Name
     name = db.Column(db.String(256), unique=False)
     # Build status (Creating|Completed|Error)
     status = db.Column(db.String(32), default="Creating")
-    # ID of the icaas agent VM
-    vm_id = db.Column(db.String(128))
+    # ID of the ICaaS agent VM
+    vm = db.Column(db.String(128))
     # User Provided Image URL
-    url = db.Column(db.String(256), unique=False)
+    src = db.Column(db.String(256), unique=False)
     # Pithos Image Object
-    p_url = db.Column(db.String(256), unique=False)
+    image = db.Column(db.String(256), unique=False)
     # ICaaS creation log in Pithos
-    p_log = db.Column(db.String(256), unique=False)
+    log = db.Column(db.String(256), unique=False)
     # Build creation time
     created = db.Column(db.DateTime, default=datetime.now)
     # Build update time
@@ -53,14 +53,14 @@ class Build(db.Model):
     # ICaaS session token
     token = db.Column(db.String(32))
 
-    def __init__(self, tenant_id, name, url, vm_id, p_url, p_log):
+    def __init__(self, user, name, src, vm, image, log):
         """Initialize a Build object"""
-        self.tenant_id = tenant_id
+        self.user = user
         self.name = name
-        self.url = url
-        self.vm_id = vm_id
-        self.p_url = p_url
-        self.p_log = p_log
+        self.src = src
+        self.vm = vm
+        self.image = image
+        self.log = log
         self.token = str(uuid4()).replace('-', '')
 
     def __repr__(self):

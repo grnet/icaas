@@ -43,17 +43,17 @@ https.patch_with_certs(settings.KAMAKI_SSL_LOCATION)
 main = Blueprint('main', __name__)
 
 
-def create_manifest(url, token, name, p_log, p_url, status):
+def create_manifest(url, token, name, log, image, status):
     config = ConfigParser.ConfigParser()
     config.add_section("service")
     config.add_section("image")
     config.set("image", "url", url)
     config.set("image", "name", name)
-    config.set("image", "object", p_url)
+    config.set("image", "object", image)
 
     config.set("service", "url", settings.AUTH_URL)
     config.set("service", "token", token)
-    config.set("service", "log", p_log)
+    config.set("service", "log", log)
     config.set("service", "status", status)
 
     manifest = StringIO.StringIO()
@@ -142,10 +142,10 @@ def view(user, buildid):
 
     d = {"id": build.id,
          "name:": build.name,
-         "url": build.url,
+         "src": build.src,
          "status": build.status,
-         "p_url": build.p_url,
-         "p_log": build.p_log,
+         "image": build.image,
+         "log": build.log,
          "created": build.created,
          "updated": build.updated,
          "deleted": build.deleted}
@@ -190,15 +190,15 @@ def create(user):
         return icaas_abort(400, 'Required fields: "%s" are missing' %
                                 '", "'.join(fields))
 
-    p_url = image_container + "/" + name + str(datetime.now())
-    p_log = log_container + "/" + name + str(datetime.now())
+    obj = image_container + "/" + name + str(datetime.now())
+    log = log_container + "/" + name + str(datetime.now())
     compute_client = cyclades.CycladesComputeClient(settings.COMPUTE_URL,
                                                     token)
-    build = Build(user.id, name, url, 0, p_url, p_log)
+    build = Build(user.id, name, url, 0, obj, log)
     db.session.add(build)
     db.session.commit()
     status = settings.ICAAS_ENDPOINT + str(build.id) + "#" + str(build.token)
-    manifest = create_manifest(url, token, name, p_log, p_url, status)
+    manifest = create_manifest(url, token, name, log, obj, status)
     personality = [
         {'contents': b64encode(manifest), 'path': settings.AGENT_CFG,
          'owner': 'root', 'group': 'root', 'mode': 0600},
@@ -208,7 +208,7 @@ def create(user):
                                        settings.FLAVOR_ID,
                                        settings.IMAGE_ID,
                                        personality=personality)
-    build.vm_id = srv['id']
+    build.vm = srv['id']
     db.session.add(build)
     db.session.commit()
     return jsonify(id=build.id, name=name, url=url)
@@ -218,7 +218,7 @@ def create(user):
 @login_required
 def list_builds(user):
     """List the builds owned by a user"""
-    builds = Build.query.filter(Build.tenant_id == user.id,
+    builds = Build.query.filter(Build.user == user.id,
                                 Build.deleted == False).all()  # noqa
     result = [{"id": i.id, "name": i.name} for i in builds]
 
