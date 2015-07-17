@@ -174,15 +174,24 @@ def create(user):
     if contents:
         name = contents.get("name", None)
         url = contents.get("url", None)
+        image_container = contents.get("image_container", None)
+        log_container = contents.get("log_container", None)
+
         if not name:
             return icaas_abort(400, "Field 'name' is missing")
         if not url:
             return icaas_abort(400, "Field 'url' is missing")
+        if not image_container:
+            return icaas_abort(400, "Field 'image_container' is missing")
+        if not log_container:
+            return icaas_abort(400, "Field 'log_container' is missing")
     else:
-        return icaas_abort(400, "Fields 'name' and 'url' are missing")
+        fields = ['name', 'url', 'image_container', 'log_container']
+        return icaas_abort(400, 'Required fields: "%s" are missing' %
+                                '", "'.join(fields))
 
-    p_url = "pithos/" + name + str(datetime.now())
-    p_log = "pithos/" + name + str(datetime.now())
+    p_url = image_container + "/" + name + str(datetime.now())
+    p_log = log_container + "/" + name + str(datetime.now())
     compute_client = cyclades.CycladesComputeClient(settings.COMPUTE_URL,
                                                     token)
     build = Build(user.id, name, url, 0, p_url, p_log)
