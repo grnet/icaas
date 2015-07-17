@@ -42,6 +42,9 @@ https.patch_with_certs(settings.KAMAKI_SSL_LOCATION)
 
 main = Blueprint('main', __name__)
 
+AGENT_CONFIG = "/etc/icaas/manifest.cfg"
+AGENT_INIT = "/.icaas"
+
 
 def create_manifest(url, token, name, log, image, status):
     config = ConfigParser.ConfigParser()
@@ -200,13 +203,13 @@ def create(user):
     status = settings.ICAAS_ENDPOINT + str(build.id) + "#" + str(build.token)
     manifest = create_manifest(url, token, name, log, obj, status)
     personality = [
-        {'contents': b64encode(manifest), 'path': settings.AGENT_CFG,
+        {'contents': b64encode(manifest), 'path': AGENT_CONFIG,
          'owner': 'root', 'group': 'root', 'mode': 0600},
-        {'contents': b64encode("empty"), 'path': settings.AGENT_INIT,
+        {'contents': b64encode("empty"), 'path': AGENT_INIT,
          'owner': 'root', 'group': 'root', 'mode': 0600}]
     srv = compute_client.create_server("VM_" + name + str(datetime.now()),
-                                       settings.FLAVOR_ID,
-                                       settings.IMAGE_ID,
+                                       settings.AGENT_IMAGE_FLAVOR_ID,
+                                       settings.AGENT_IMAGE_ID,
                                        personality=personality)
     build.vm = srv['id']
     db.session.add(build)
