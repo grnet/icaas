@@ -24,6 +24,7 @@ def make_shell_context():
 
 @manager.command
 def createdb():
+    """Creates the ICaaS database"""
     db.create_all()
 
 if __name__ == "__main__":
