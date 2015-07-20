@@ -18,25 +18,26 @@
 
 
 from flask import (
-    abort,
     request,
     jsonify,
     Response,
     Blueprint
 )
+
 from functools import wraps
+from datetime import datetime
+from base64 import b64encode
+import ConfigParser
+import StringIO
 
 from kamaki.clients import cyclades
 from kamaki.clients.utils import https
+
 import astakosclient
-from datetime import datetime
 
-from base64 import b64encode
 from icaas.models import Build, User, db
+from icaas.error import InvalidAPIUsage
 from icaas import settings
-
-import ConfigParser
-import StringIO
 
 https.patch_with_certs(settings.KAMAKI_SSL_LOCATION)
 
@@ -68,16 +69,16 @@ def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if "X-Auth-Token" not in request.headers:
-            abort(403)
+            raise InvalidAPIUsage("Token is missing", status=401)
         token = request.headers["X-Auth-Token"]
         astakos = astakosclient.AstakosClient(token, settings.AUTH_URL)
 
         try:
             astakos = astakos.authenticate()
         except astakosclient.errors.Unauthorized:
-            abort(401)
+            raise InvalidAPIUsage("Invalid token", status=401)
         except:
-            abort(500)
+            raise InvalidAPIUsage("Internal server error", status=500)
 
         uuid = astakos['access']['user']['id']
         user = User.query.filter_by(uuid=uuid).first()
@@ -94,34 +95,26 @@ def login_required(f):
     return decorated_function
 
 
-def icaas_abort(status_code, message):
-    response = jsonify({"badRequest":
-                       {'message': message,
-                        'code': status_code,
-                        'details': ""}})
-    response.status_code = status_code
-    return response
-
-
 @main.route('/icaas/<buildid>', methods=['PUT'])
 def update(buildid):
     """Update the build status"""
-    contents = request.get_json()
+
+    params = request.get_json()
     if "X-Icaas-Token" not in request.headers:
-        abort(401)
+        raise InvalidAPIUsage("Missing ICaaS token", status=401)
 
     token = request.headers["X-Icaas-Token"]
-    if contents:
-        status = contents.get("status", None)
-        reason = contents.get("reason", None)
+    if params:
+        status = params.get("status", None)
+        reason = params.get("reason", None)
         if not status:
-            return icaas_abort(400, "Field 'status' is missing")
+            raise InvalidAPIUsage("Parameter: 'status' is missing", status=400)
         if status not in ["ERROR", "COMPLETED"]:
-            return icaas_abort(400, "Bad request: Invalid 'status' field")
+            raise InvalidAPIUsage("Invalid 'status' parameter", status=400)
 
         build = Build.query.filter_by(id=buildid, token=token).first()
         if build is None:
-            return icaas_abort(404, "Build not found")
+            raise InvalidAPIUsage("Build not found", status=404)
 
         build.status = status
         if reason:
@@ -132,16 +125,18 @@ def update(buildid):
         response.status_code = 200
         return response
 
-    abort(400)
+    raise InvalidAPIUsage("Parameters 'status' and 'reason' are missing",
+                          status=400)
 
 
 @main.route('/icaas/<buildid>', methods=['GET'])
 @login_required
 def view(user, buildid):
     """View a specific build entry"""
+
     build = Build.query.filter_by(id=buildid).first()
     if not build:
-        return icaas_abort(400, "Build id not valid")
+        raise InvalidAPIUsage("Build not found", status=404)
 
     d = {"id": build.id,
          "name:": build.name,
@@ -183,30 +178,30 @@ def create(user):
         # Image Registration Name
         name = params.get("name", None)
         if not name:
-            return icaas_abort(400, missing % 'name')
+            raise InvalidAPIUsage(missing % 'name', status=400)
         # User provided Image URL
         url = params.get("url", None)
         if not url:
-            return icaas_abort(400, missing % 'url')
+            raise InvalidAPIUsage(missing % 'url', status=400)
 
         # Pithos image object
         image = params.get("image", None)
         if not image:
-            return icaas_abort(400, missing % 'image')
+            raise InvalidAPIUsage(missing % 'image', status=400)
         separator = image.find('/')
         if separator < 1 or separator == len(image) - 1:
-            return icaas_abort(400, invalid % 'image')
+            raise InvalidAPIUsage(invalid % 'image', status=400)
         # Pithos log object
         log = params.get("log", None)
         if not log:
-            return icaas_abort(400, missing % 'log')
+            raise InvalidAPIUsage(missing % 'log', status=400)
         separator = log.find('/')
         if separator < 1 or separator == len(image) - 1:
-            return icaas_abort(400, invalid % 'log')
+            raise InvalidAPIUsage(invalid % 'log', status=400)
     else:
         fields = ['name', 'url', 'image', 'log']
-        return icaas_abort(400, 'Required fields: "%s" are missing' %
-                                '", "'.join(fields))
+        raise InvalidAPIUsage('Required fields: "%s" are missing' %
+                              '", "'.join(fields), status=400)
 
     build = Build(user.id, name, url, None, image, log)
     db.session.add(build)

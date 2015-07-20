@@ -16,10 +16,11 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from flask import Flask
+from flask import Flask, jsonify
 
 from icaas.models import db
 from icaas.controllers.main import main
+from icaas.error import InvalidAPIUsage
 
 
 def create_app(object_name, env="prod"):
@@ -41,6 +42,13 @@ def create_app(object_name, env="prod"):
 
     # initialize SQLAlchemy
     db.init_app(app)
+
+    # Override the default error handler
+    @app.errorhandler(InvalidAPIUsage)
+    def handle_invalid_usage(error):
+        response = jsonify(error.to_dict())
+        response.status_code = error.status_code
+        return response
 
     # register our blueprints
     app.register_blueprint(main)
