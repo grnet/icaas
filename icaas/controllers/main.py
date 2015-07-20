@@ -177,31 +177,39 @@ def create(user):
     if contents:
         name = contents.get("name", None)
         url = contents.get("url", None)
-        image_container = contents.get("image_container", None)
-        log_container = contents.get("log_container", None)
+        image = contents.get("image", None)
+        log = contents.get("log", None)
 
         if not name:
             return icaas_abort(400, "Field 'name' is missing")
         if not url:
             return icaas_abort(400, "Field 'url' is missing")
-        if not image_container:
-            return icaas_abort(400, "Field 'image_container' is missing")
-        if not log_container:
-            return icaas_abort(400, "Field 'log_container' is missing")
+        if not image:
+            return icaas_abort(400, "Field 'image' is missing")
+        if not log:
+            return icaas_abort(400, "Field 'log' is missing")
     else:
-        fields = ['name', 'url', 'image_container', 'log_container']
+        fields = ['name', 'url', 'image', 'log']
         return icaas_abort(400, 'Required fields: "%s" are missing' %
                                 '", "'.join(fields))
 
-    obj = image_container + "/" + name + str(datetime.now())
-    log = log_container + "/" + name + str(datetime.now())
+    msg = "Field: '%s' value not in <container>/<path> format"
+
+    separator = image.find('/')
+    if separator < 1 or separator == len(image) - 1:
+        return icaas_abort(400, msg % 'image')
+
+    separator = log.find('/')
+    if separator < 1 or separator == len(image) - 1:
+        return icaas_abort(400, msg % 'log')
+
     compute_client = cyclades.CycladesComputeClient(settings.COMPUTE_URL,
                                                     token)
-    build = Build(user.id, name, url, 0, obj, log)
+    build = Build(user.id, name, url, 0, image, log)
     db.session.add(build)
     db.session.commit()
     status = settings.ICAAS_ENDPOINT + str(build.id) + "#" + str(build.token)
-    manifest = create_manifest(url, token, name, log, obj, status)
+    manifest = create_manifest(url, token, name, log, image, status)
     personality = [
         {'contents': b64encode(manifest), 'path': AGENT_CONFIG,
          'owner': 'root', 'group': 'root', 'mode': 0600},
