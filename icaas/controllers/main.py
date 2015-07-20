@@ -173,55 +173,63 @@ def delete(user, buildid):
 def create(user):
     """Create a new image with ICaaS"""
     token = request.headers["X-Auth-Token"]
-    contents = request.get_json()
-    if contents:
-        name = contents.get("name", None)
-        url = contents.get("url", None)
-        image = contents.get("image", None)
-        log = contents.get("log", None)
 
+    params = request.get_json()
+    if params:
+
+        missing = "Parameter: '%s' is missing or empty"
+        invalid = "'%s' parameter's value not in <container>/<path> format"
+
+        # Image Registration Name
+        name = params.get("name", None)
         if not name:
-            return icaas_abort(400, "Field 'name' is missing")
+            return icaas_abort(400, missing % 'name')
+        # User provided Image URL
+        url = params.get("url", None)
         if not url:
-            return icaas_abort(400, "Field 'url' is missing")
+            return icaas_abort(400, missing % 'url')
+
+        # Pithos image object
+        image = params.get("image", None)
         if not image:
-            return icaas_abort(400, "Field 'image' is missing")
+            return icaas_abort(400, missing % 'image')
+        separator = image.find('/')
+        if separator < 1 or separator == len(image) - 1:
+            return icaas_abort(400, invalid % 'image')
+        # Pithos log object
+        log = params.get("log", None)
         if not log:
-            return icaas_abort(400, "Field 'log' is missing")
+            return icaas_abort(400, missing % 'log')
+        separator = log.find('/')
+        if separator < 1 or separator == len(image) - 1:
+            return icaas_abort(400, invalid % 'log')
     else:
         fields = ['name', 'url', 'image', 'log']
         return icaas_abort(400, 'Required fields: "%s" are missing' %
                                 '", "'.join(fields))
 
-    msg = "Field: '%s' value not in <container>/<path> format"
-
-    separator = image.find('/')
-    if separator < 1 or separator == len(image) - 1:
-        return icaas_abort(400, msg % 'image')
-
-    separator = log.find('/')
-    if separator < 1 or separator == len(image) - 1:
-        return icaas_abort(400, msg % 'log')
-
-    compute_client = cyclades.CycladesComputeClient(settings.COMPUTE_URL,
-                                                    token)
-    build = Build(user.id, name, url, 0, image, log)
+    build = Build(user.id, name, url, None, image, log)
     db.session.add(build)
     db.session.commit()
-    status = settings.ICAAS_ENDPOINT + str(build.id) + "#" + str(build.token)
+
+    status = "%s%s#%s" % (settings.ICAAS_ENDPOINT, build.id, build.token)
     manifest = create_manifest(url, token, name, log, image, status)
     personality = [
         {'contents': b64encode(manifest), 'path': AGENT_CONFIG,
          'owner': 'root', 'group': 'root', 'mode': 0600},
         {'contents': b64encode("empty"), 'path': AGENT_INIT,
          'owner': 'root', 'group': 'root', 'mode': 0600}]
-    srv = compute_client.create_server("VM_" + name + str(datetime.now()),
-                                       settings.AGENT_IMAGE_FLAVOR_ID,
-                                       settings.AGENT_IMAGE_ID,
-                                       personality=personality)
-    build.vm = srv['id']
+
+    compute = cyclades.CycladesComputeClient(settings.COMPUTE_URL, token)
+    date = datetime.now().strftime('%Y%m%d%H%M%S%f')
+    vm = compute.create_server("icaas-agent-%s-%s" % (build.id, date),
+                               settings.AGENT_IMAGE_FLAVOR_ID,
+                               settings.AGENT_IMAGE_ID,
+                               personality=personality)
+    build.vm = vm['id']
     db.session.add(build)
     db.session.commit()
+
     return jsonify(id=build.id, name=name, url=url)
 
 
