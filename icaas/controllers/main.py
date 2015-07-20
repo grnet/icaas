@@ -230,7 +230,7 @@ def create(user):
     db.session.add(build)
     db.session.commit()
 
-    return jsonify(id=build.id, name=name, url=url)
+    return jsonify(id=build.id)
 
 
 @main.route('/icaas', methods=['GET'])
