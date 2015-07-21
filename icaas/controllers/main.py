@@ -134,7 +134,7 @@ def update(buildid):
 def view(user, buildid):
     """View a specific build entry"""
 
-    build = Build.query.filter_by(id=buildid).first()
+    build = Build.query.filter_by(id=buildid, user=user.id).first()
     if not build:
         raise InvalidAPIUsage("Build not found", status=404)
 
@@ -155,7 +155,9 @@ def view(user, buildid):
 @login_required
 def delete(user, buildid):
     """Delete an existing build entry"""
-    build = Build.query.filter_by(id=buildid).first()
+    build = Build.query.filter_by(id=buildid, user=user.id).first()
+    if not build:
+        raise InvalidAPIUsage("Build not found", status=404)
     build.deleted = True
     db.session.commit()
     resp = Response()
