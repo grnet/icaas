@@ -21,6 +21,7 @@ from flask import Flask, jsonify
 from icaas.models import db
 from icaas.controllers.main import main
 from icaas.error import InvalidAPIUsage
+from icaas import settings
 
 
 def create_app(object_name, env="prod"):
@@ -52,6 +53,9 @@ def create_app(object_name, env="prod"):
 
     # register our blueprints
     app.register_blueprint(main)
+
+    # set the secret key
+    app.secret_key = settings.SECRET_KEY
 
     return app
 
