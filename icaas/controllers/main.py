@@ -95,7 +95,7 @@ def login_required(f):
     return decorated_function
 
 
-@main.route('/icaas/<buildid>', methods=['PUT'])
+@main.route('/icaas/<int:buildid>', methods=['PUT'])
 def update(buildid):
     """Update the build status"""
 
@@ -129,7 +129,7 @@ def update(buildid):
                           status=400)
 
 
-@main.route('/icaas/<buildid>', methods=['GET'])
+@main.route('/icaas/<int:buildid>', methods=['GET'])
 @login_required
 def view(user, buildid):
     """View a specific build entry"""
@@ -151,7 +151,7 @@ def view(user, buildid):
     return jsonify({"build": d})
 
 
-@main.route('/icaas/<buildid>', methods=['DELETE'])
+@main.route('/icaas/<int:buildid>', methods=['DELETE'])
 @login_required
 def delete(user, buildid):
     """Delete an existing build entry"""
