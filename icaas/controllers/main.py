@@ -29,6 +29,7 @@ from datetime import datetime
 from base64 import b64encode
 import ConfigParser
 import StringIO
+import logging
 
 from kamaki.clients import cyclades
 from kamaki.clients.utils import https
@@ -46,8 +47,11 @@ main = Blueprint('main', __name__)
 AGENT_CONFIG = "/etc/icaas/manifest.cfg"
 AGENT_INIT = "/.icaas"
 
+logger = logging.getLogger(__name__)
 
-def create_manifest(url, token, name, log, image, status):
+
+def _create_manifest(url, token, name, log, image, status):
+    """Create manifest file to be injected to the ICaaS Agent VM"""
     config = ConfigParser.ConfigParser()
     config.add_section("service")
     config.add_section("image")
@@ -59,6 +63,7 @@ def create_manifest(url, token, name, log, image, status):
     config.set("service", "token", token)
     config.set("service", "log", log)
     config.set("service", "status", status)
+    logger.debug("icaas-agent manifest file: %r" % config._sections)
 
     manifest = StringIO.StringIO()
     config.write(manifest)
@@ -68,7 +73,9 @@ def create_manifest(url, token, name, log, image, status):
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        logger.debug('checking X-Auth-Token before "%s"' % f.__name__)
         if "X-Auth-Token" not in request.headers:
+            logger.debug('X-Auth-Token missing')
             raise InvalidAPIUsage("Token is missing", status=401)
         token = request.headers["X-Auth-Token"]
         astakos = astakosclient.AstakosClient(token, settings.AUTH_URL)
@@ -76,8 +83,10 @@ def login_required(f):
         try:
             astakos = astakos.authenticate()
         except astakosclient.errors.Unauthorized:
+            logger.debug('X-AUTH-Token not valid')
             raise InvalidAPIUsage("Invalid token", status=401)
-        except:
+        except Exception as e:
+            logger.debug("astakosclient: '%s'" % str(e))
             raise InvalidAPIUsage("Internal server error", status=500)
 
         uuid = astakos['access']['user']['id']
@@ -87,9 +96,11 @@ def login_required(f):
             user.token = token
             db.session.add(user)
             db.session.commit()
+            logger.debug('new user %d' % user.id)
         elif user.token != token:
             user.token = token
             db.session.commit()
+            logger.debug('update existing user %d' % user.id)
 
         return f(user, *args, **kwargs)
     return decorated_function
@@ -98,12 +109,15 @@ def login_required(f):
 @main.route('/icaas/<int:buildid>', methods=['PUT'])
 def update(buildid):
     """Update the build status"""
+    logger.info("update build %d" % buildid)
 
-    params = request.get_json()
     if "X-Icaas-Token" not in request.headers:
         raise InvalidAPIUsage("Missing ICaaS token", status=401)
 
     token = request.headers["X-Icaas-Token"]
+    params = request.get_json()
+    logger.debug("update build %d with token %s and params %s" %
+                 (buildid, token, params))
     if params:
         status = params.get("status", None)
         reason = params.get("reason", None)
@@ -121,9 +135,7 @@ def update(buildid):
             build.erreason = reason
 
         db.session.commit()
-        response = Response()
-        response.status_code = 200
-        return response
+        return Response(status=200)
 
     raise InvalidAPIUsage("Parameters 'status' and 'reason' are missing",
                           status=400)
@@ -133,6 +145,7 @@ def update(buildid):
 @login_required
 def view(user, buildid):
     """View a specific build entry"""
+    logger.info("view buildid %d by user %s" % (buildid, user.id))
 
     build = Build.query.filter_by(id=buildid, user=user.id).first()
     if not build:
@@ -155,25 +168,28 @@ def view(user, buildid):
 @login_required
 def delete(user, buildid):
     """Delete an existing build entry"""
+    logger.info("delete buildid %d by user %s" % (buildid, user.id))
+
     build = Build.query.filter_by(id=buildid, user=user.id).first()
     if not build:
         raise InvalidAPIUsage("Build not found", status=404)
     build.deleted = True
     db.session.commit()
-    resp = Response()
-    resp.status_code = 200
-    return resp
+
+    return Response(status=200)
 
 
 @main.route('/icaas', methods=['POST'])
 @login_required
 def create(user):
     """Create a new image with ICaaS"""
+    logger.info("create build by user %s" % user.id)
+
     token = request.headers["X-Auth-Token"]
 
     params = request.get_json()
+    logger.debug("create build with params %s" % params)
     if params:
-
         missing = "Parameter: '%s' is missing or empty"
         invalid = "'%s' parameter's value not in <container>/<path> format"
 
@@ -208,9 +224,11 @@ def create(user):
     build = Build(user.id, name, url, None, image, log)
     db.session.add(build)
     db.session.commit()
+    logger.debug('created build %r' % build.id)
 
     status = "%s%s#%s" % (settings.ICAAS_ENDPOINT, build.id, build.token)
-    manifest = create_manifest(url, token, name, log, image, status)
+    manifest = _create_manifest(url, token, name, log, image, status)
+
     personality = [
         {'contents': b64encode(manifest), 'path': AGENT_CONFIG,
          'owner': 'root', 'group': 'root', 'mode': 0600},
@@ -223,6 +241,7 @@ def create(user):
                                settings.AGENT_IMAGE_FLAVOR_ID,
                                settings.AGENT_IMAGE_ID,
                                personality=personality)
+    logger.debug("create new icaas agent vm: %s" % vm)
     build.vm = vm['id']
     db.session.add(build)
     db.session.commit()
@@ -234,6 +253,8 @@ def create(user):
 @login_required
 def list_builds(user):
     """List the builds owned by a user"""
+    logger.info('list_builds by user %s' % user.id)
+
     builds = Build.query.filter(Build.user == user.id,
                                 Build.deleted == False).all()  # noqa
     result = [{"id": i.id, "name": i.name} for i in builds]
