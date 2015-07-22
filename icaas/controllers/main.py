@@ -113,11 +113,14 @@ def update(buildid):
 
     if "X-Icaas-Token" not in request.headers:
         raise InvalidAPIUsage("Missing ICaaS token", status=401)
-
     token = request.headers["X-Icaas-Token"]
+
+    build = Build.query.filter_by(id=buildid, token=token).first()
+    if build is None:
+        raise InvalidAPIUsage("Build not found", status=404)
+
     params = request.get_json()
-    logger.debug("update build %d with token %s and params %s" %
-                 (buildid, token, params))
+    logger.debug("update build %d with params %s" % (buildid, params))
     if params:
         status = params.get("status", None)
         reason = params.get("reason", None)
@@ -126,15 +129,34 @@ def update(buildid):
         if status not in ["ERROR", "COMPLETED"]:
             raise InvalidAPIUsage("Invalid 'status' parameter", status=400)
 
-        build = Build.query.filter_by(id=buildid, token=token).first()
-        if build is None:
-            raise InvalidAPIUsage("Build not found", status=404)
-
         build.status = status
         if reason:
             build.erreason = reason
-
         db.session.commit()
+
+        # Should we delete the agent VM?
+        if status == "COMPLETED" or (status == "ERROR" and not settings.DEBUG):
+            user = User.query.filter_by(id=build.user).first()
+            if not user:
+                logger.error('unable to find user %d to delete the agent VM'
+                             % build.id)
+                # There is no need to inform the agent about this
+                return Response(status=200)
+
+            compute = cyclades.CycladesComputeClient(settings.COMPUTE_URL,
+                                                     user.token)
+            try:
+                compute.delete_server(build.vm)
+            except ClientError as e:
+                logger.error(
+                    'failed to delete the icaas agent of build %d: (%d, %s)'
+                    % (build.id, e.status, e))
+            except Exception as e:
+                logger.error('failed to delete the icaas agent of build %d: %s'
+                             % (build.id, e))
+        elif status == 'ERROR':
+            logger.warning('not deleting the agent VM on errors in debug mode')
+
         return Response(status=200)
 
     raise InvalidAPIUsage("Parameters 'status' and 'reason' are missing",
