@@ -31,7 +31,7 @@ import ConfigParser
 import StringIO
 import logging
 
-from kamaki.clients import cyclades
+from kamaki.clients import cyclades, ClientError
 from kamaki.clients.utils import https
 
 import astakosclient
@@ -237,10 +237,27 @@ def create(user):
 
     compute = cyclades.CycladesComputeClient(settings.COMPUTE_URL, token)
     date = datetime.now().strftime('%Y%m%d%H%M%S%f')
-    vm = compute.create_server("icaas-agent-%s-%s" % (build.id, date),
-                               settings.AGENT_IMAGE_FLAVOR_ID,
-                               settings.AGENT_IMAGE_ID,
-                               personality=personality)
+    try:
+        vm = compute.create_server("icaas-agent-%s-%s" % (build.id, date),
+                                   settings.AGENT_IMAGE_FLAVOR_ID,
+                                   settings.AGENT_IMAGE_ID,
+                                   personality=personality)
+    except ClientError as e:
+        build.status = 'ERROR'
+        build.erreason = 'icaas agent creation failed'
+        db.session.add(build)
+        db.session.commit()
+        logger.error("icaas agent creation failed: (%d, %s)" % (e.status, e))
+        raise InvalidAPIUsage('icaas agent creation failed', e.status,
+                              {'details': e.message})
+    except Exception as e:
+        build.status = 'ERROR'
+        build.erreason = 'icaas agent creation failed'
+        db.session.add(build)
+        db.session.commit()
+        logger.error("icaas agent creation failed: %s" % e)
+        raise InvalidAPIUsage('Internal Server Error', 500)
+
     logger.debug("create new icaas agent vm: %s" % vm)
     build.vm = vm['id']
     db.session.add(build)
