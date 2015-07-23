@@ -1,3 +1,21 @@
+#
+# Copyright (C) 2015 GRNET S.A.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+"""Module hosting the default settings for the ICaaS service"""
+
 # Flavor ID to use for the ICaaS agent VM
 AGENT_IMAGE_FLAVOR_ID = '1'
 
@@ -17,7 +35,7 @@ SECRET_KEY = '5hh2uo7128pjzv13aqpyx5vvi9j5t75mo6zme88o'
 SESSION_COOKIE_NAME = 'icaas_session'
 
 # Service Database
-SQLALCHEMY_DATABASE_URI = 'sqlite:////tmp/test_icaas.db'
+SQLALCHEMY_DATABASE_URI = 'sqlite:////tmp/icaas.db'
 
 # SSL Certificate location
 KAMAKI_SSL_LOCATION = '/etc/ssl/certs/ca-certificates.crt'

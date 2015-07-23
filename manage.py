@@ -33,6 +33,14 @@ def createdb():
     """Creates the ICaaS database"""
     db.create_all()
 
+
+@manager.command
+def showsettings():
+    """Show current settings"""
+    for k,v in settings.__dict__.items():
+        if isinstance(k, basestring) and k.isupper():
+            print "%s=%s" % (k, v)
+
 if __name__ == "__main__":
     handler = logging.StreamHandler(sys.stderr)
     formatter = logging.Formatter('%(name)s [%(levelname)s] %(message)s')
