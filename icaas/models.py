@@ -34,7 +34,9 @@ class Build(db.Model):
     # Build status (Creating|Completed|Error)
     status = db.Column(db.String(32), default="Creating")
     # ID of the ICaaS agent VM
-    vm = db.Column(db.String(128))
+    agent = db.Column(db.String(128))
+    # Is the ICaaS agent alive?
+    agent_alive = db.Column(db.Boolean, default=False)
     # User Provided Image URL
     src = db.Column(db.String(256), unique=False)
     # Pithos Image Object
@@ -53,12 +55,12 @@ class Build(db.Model):
     # ICaaS session token
     token = db.Column(db.String(32))
 
-    def __init__(self, user, name, src, vm, image, log):
+    def __init__(self, user, name, src, agent, image, log):
         """Initialize a Build object"""
         self.user = user
         self.name = name
         self.src = src
-        self.vm = vm
+        self.agent = agent
         self.image = image
         self.log = log
         self.token = str(uuid4()).replace('-', '')

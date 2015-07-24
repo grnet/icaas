@@ -146,11 +146,15 @@ def update(buildid):
             compute = cyclades.CycladesComputeClient(settings.COMPUTE_URL,
                                                      user.token)
             try:
-                compute.delete_server(build.vm)
+                compute.delete_server(build.agent)
             except ClientError as e:
                 logger.error(
                     'failed to delete the icaas agent of build %d: (%d, %s)'
                     % (build.id, e.status, e))
+                if e.status == 400:  # The server is probably dead already
+                    build.agent_alive = False
+                    db.session.commit()
+
             except Exception as e:
                 logger.error('failed to delete the icaas agent of build %d: %s'
                              % (build.id, e))
@@ -260,14 +264,13 @@ def create(user):
     compute = cyclades.CycladesComputeClient(settings.COMPUTE_URL, token)
     date = datetime.now().strftime('%Y%m%d%H%M%S%f')
     try:
-        vm = compute.create_server("icaas-agent-%s-%s" % (build.id, date),
-                                   settings.AGENT_IMAGE_FLAVOR_ID,
-                                   settings.AGENT_IMAGE_ID,
-                                   personality=personality)
+        agent = compute.create_server("icaas-agent-%s-%s" % (build.id, date),
+                                      settings.AGENT_IMAGE_FLAVOR_ID,
+                                      settings.AGENT_IMAGE_ID,
+                                      personality=personality)
     except ClientError as e:
         build.status = 'ERROR'
         build.erreason = 'icaas agent creation failed'
-        db.session.add(build)
         db.session.commit()
         logger.error("icaas agent creation failed: (%d, %s)" % (e.status, e))
         raise InvalidAPIUsage('icaas agent creation failed', e.status,
@@ -275,14 +278,13 @@ def create(user):
     except Exception as e:
         build.status = 'ERROR'
         build.erreason = 'icaas agent creation failed'
-        db.session.add(build)
         db.session.commit()
         logger.error("icaas agent creation failed: %s" % e)
         raise InvalidAPIUsage('Internal Server Error', 500)
 
-    logger.debug("create new icaas agent vm: %s" % vm)
-    build.vm = vm['id']
-    db.session.add(build)
+    logger.debug("create new icaas agent vm: %s" % agent)
+    build.agent = agent['id']
+    build.agent_alive = True
     db.session.commit()
 
     return jsonify(id=build.id)
