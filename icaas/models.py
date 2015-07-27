@@ -25,6 +25,7 @@ db = SQLAlchemy()
 
 class Build(db.Model):
     """Represents the Build model"""
+    __tablename__ = 'build'
     # Unique build ID
     id = db.Column(db.Integer, primary_key=True, index=True)
     # User ID
@@ -44,16 +45,18 @@ class Build(db.Model):
     # ICaaS creation log in Pithos
     log = db.Column(db.String(256), unique=False)
     # Build creation time
-    created = db.Column(db.DateTime, default=datetime.now)
+    created = db.Column(db.DateTime, default=datetime.utcnow)
     # Build update time
-    updated = db.Column(db.DateTime, default=datetime.now,
-                        onupdate=datetime.now)
+    updated = db.Column(db.DateTime, default=datetime.utcnow,
+                        onupdate=datetime.utcnow)
     # Is the build deleted?
     deleted = db.Column(db.Boolean, default=False)
     # Reason of Error
     erreason = db.Column(db.String(256))
     # ICaaS session token
     token = db.Column(db.String(32))
+    # Index to be used to check if the agent VM timed out
+    __table_args__ = (db.Index('agent_alive_index', 'agent_alive', 'created'),)
 
     def __init__(self, user, name, src, agent, image, log):
         """Initialize a Build object"""
@@ -71,6 +74,7 @@ class Build(db.Model):
 
 class User(db.Model):
     """Represents the User model"""
+    __tablename__ = 'user'
     # Unique User ID
     id = db.Column(db.Integer, primary_key=True, index=True)
     # Synnefo UUID of the User

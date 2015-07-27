@@ -9,6 +9,7 @@ from flask.ext.script.commands import ShowUrls, Clean
 
 from icaas import create_app
 from icaas.models import db, User, Build
+from icaas.utils import exec_on_timeout, destroy_agent
 from icaas import settings
 
 logger = logging.getLogger()
@@ -40,6 +41,28 @@ def showsettings():
     for k,v in settings.__dict__.items():
         if isinstance(k, basestring) and k.isupper():
             print "%s=%s" % (k, v)
+
+
+@manager.option('-d', '--dry-run', action='store_true',
+                help="don't destroy the timed out builds")
+@manager.option('-m', help='timeout in minutes [default: 60]', default=60,
+                metavar="MINUTES", dest='minutes', type=int)
+def timeout(minutes, dry_run):
+    """Put in error state all builds that are running for more than
+    [MINUTES]
+    """
+
+    def set_error(build):
+        """Put a build that timed out to error state"""
+        if build.status != 'COMPLETED':
+            build.status = 'ERROR'
+            build.erreason = 'timed out'
+            db.session.commit()
+        return destroy_agent(build)
+
+    action = (lambda build: True) if dry_run else set_error
+    return exec_on_timeout(minutes, action)
+
 
 if __name__ == "__main__":
     handler = logging.StreamHandler(sys.stderr)

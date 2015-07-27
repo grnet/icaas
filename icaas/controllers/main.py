@@ -38,6 +38,7 @@ import astakosclient
 
 from icaas.models import Build, User, db
 from icaas.error import InvalidAPIUsage
+from icaas.utils import destroy_agent
 from icaas import settings
 
 https.patch_with_certs(settings.KAMAKI_SSL_LOCATION)
@@ -136,28 +137,7 @@ def update(buildid):
 
         # Should we delete the agent VM?
         if status == "COMPLETED" or (status == "ERROR" and not settings.DEBUG):
-            user = User.query.filter_by(id=build.user).first()
-            if not user:
-                logger.error('unable to find user %d to delete the agent VM'
-                             % build.id)
-                # There is no need to inform the agent about this
-                return Response(status=200)
-
-            compute = cyclades.CycladesComputeClient(settings.COMPUTE_URL,
-                                                     user.token)
-            try:
-                compute.delete_server(build.agent)
-            except ClientError as e:
-                logger.error(
-                    'failed to delete the icaas agent of build %d: (%d, %s)'
-                    % (build.id, e.status, e))
-                if e.status == 400:  # The server is probably dead already
-                    build.agent_alive = False
-                    db.session.commit()
-
-            except Exception as e:
-                logger.error('failed to delete the icaas agent of build %d: %s'
-                             % (build.id, e))
+            destroy_agent(build)
         elif status == 'ERROR':
             logger.warning('not deleting the agent VM on errors in debug mode')
 
