@@ -16,6 +16,9 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import sys
+import logging
+
 from flask import Flask, jsonify
 
 from icaas.models import db
@@ -24,22 +27,30 @@ from icaas.error import InvalidAPIUsage
 from icaas import settings
 
 
-def create_app(object_name, env="prod"):
-    """
-    An flask application factory, as explained here:
-    http://flask.pocoo.org/docs/patterns/appfactories/
+logger = logging.getLogger()
 
-    Arguments:
-        object_name: the python path of the config object,
-                     e.g. appname.settings.ProdConfig
 
-        env: The name of the current environment, e.g. prod or dev
-    """
+def create_app(**kwargs):
 
     app = Flask(__name__)
 
-    app.config.from_object(object_name)
-    app.config['ENV'] = env
+    if 'logfile' in kwargs:
+        if kwargs['logfile'] is None:
+            handler = logging.StreamHandler(sys.stderr)
+        else:
+            handler = logging.FileHandler(kwargs['logfile'])
+
+        if kwargs['logformat'] is not None:
+            formatter = logging.Formatter(kwargs['logformat'])
+            handler.setFormatter(formatter)
+
+        logger.addHandler(handler)
+        logger.setLevel(kwargs['loglevel'])
+
+        if kwargs['logconfig'] is not None:
+            logging.config.fileConfig(kwargs['logconfig'])
+
+    app.config.from_object(settings)
 
     # initialize SQLAlchemy
     db.init_app(app)
@@ -53,9 +64,6 @@ def create_app(object_name, env="prod"):
 
     # register our blueprints
     app.register_blueprint(main)
-
-    # set the secret key
-    app.secret_key = settings.SECRET_KEY
 
     return app
 
