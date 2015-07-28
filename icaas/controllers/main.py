@@ -232,7 +232,7 @@ def create(user):
     db.session.commit()
     logger.debug('created build %r' % build.id)
 
-    status = "%s%s#%s" % (settings.ICAAS_ENDPOINT, build.id, build.token)
+    status = "%s%s#%s" % (settings.ENDPOINT, build.id, build.token)
     manifest = _create_manifest(url, token, name, log, image, status)
 
     personality = [

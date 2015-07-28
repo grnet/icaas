@@ -44,6 +44,6 @@ KAMAKI_SSL_LOCATION = '/etc/ssl/certs/ca-certificates.crt'
 DEBUG = True
 
 # ICaaS endpoint URL to be used by the agent VM to update the build status
-ICAAS_ENDPOINT = "http://example.org/icaas/"
+ENDPOINT = "http://example.org/icaas/"
 
 # vim: ai ts=4 sts=4 et sw=4 ft=python
