@@ -33,5 +33,9 @@ if os.path.exists(ICAAS_CONFIG):
                          % (ICAAS_CONFIG, e))
         raise SystemExit(1)
 
+# Overwrite the value of a setting if the environment variable
+# ICAAS_SETTINGNAME is defined.
+for i in [var for var in os.environ if var.startswith("ICAAS_")]:
+    setattr(sys.modules[__name__], i[6:], os.environ[i])
 
 # vim: ai ts=4 sts=4 et sw=4 ft=python
