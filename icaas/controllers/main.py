@@ -51,6 +51,11 @@ AGENT_INIT = "/.icaas"
 logger = logging.getLogger(__name__)
 
 
+def _build_to_links(build):
+    url = "%s%s" % (settings.ENDPOINT, build.id)
+    return [{"href": url, "rel": "self"}]
+
+
 def _create_manifest(url, token, name, log, image, status):
     """Create manifest file to be injected to the ICaaS Agent VM"""
     config = ConfigParser.ConfigParser()
@@ -165,7 +170,8 @@ def view(user, buildid):
          "log": build.log,
          "created": build.created,
          "updated": build.updated,
-         "deleted": build.deleted}
+         "deleted": build.deleted,
+         "links": _build_to_links(build)}
 
     return jsonify({"build": d})
 
@@ -278,7 +284,8 @@ def list_builds(user):
 
     builds = Build.query.filter(Build.user == user.id,
                                 Build.deleted == False).all()  # noqa
-    result = [{"id": i.id, "name": i.name} for i in builds]
+    result = [{"links": _build_to_links(i), "id": i.id, "name": i.name} for i
+              in builds]
 
     return jsonify({"builds": result})
 
