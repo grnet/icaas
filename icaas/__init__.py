@@ -21,6 +21,7 @@ import logging
 
 from flask import Flask, jsonify
 
+from icaas.version import __version__
 from icaas.models import db
 from icaas.controllers.main import main
 from icaas.error import InvalidAPIUsage
@@ -33,6 +34,8 @@ logger = logging.getLogger()
 def create_app(**kwargs):
 
     app = Flask(__name__)
+    app.version = __version__
+    app.config.from_object(settings)
 
     if 'logfile' in kwargs:
         if kwargs['logfile'] is None:
@@ -47,10 +50,9 @@ def create_app(**kwargs):
         logger.addHandler(handler)
         logger.setLevel(kwargs['loglevel'])
 
+    if 'logconfig' in kwargs:
         if kwargs['logconfig'] is not None:
             logging.config.fileConfig(kwargs['logconfig'])
-
-    app.config.from_object(settings)
 
     # initialize SQLAlchemy
     db.init_app(app)
