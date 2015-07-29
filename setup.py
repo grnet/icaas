@@ -16,14 +16,14 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from icaas.version import __version__
 from pip.download import PipSession
 from pip.req import parse_requirements
 from setuptools import setup, find_packages
 from os.path import dirname, abspath, join
 
+directory = dirname(abspath(__file__))
 # parse_requirements() returns generator of pip.req.InstallRequirement objects
-requirements = join(dirname(abspath(__file__)), 'requirements.txt')
+requirements = join(directory, 'requirements.txt')
 install_reqs = parse_requirements(requirements, session=PipSession())
 
 # reqs is a list of requirement
@@ -32,9 +32,9 @@ reqs = [str(ir.req) for ir in install_reqs]
 
 setup(
     name='ICaaS',
-    version=__version__,
+    version=open(join(directory, 'version')).read(),
     description='Image Creator as a Service',
-    long_description=open('README.md').read(),
+    long_description=open(join(directory, 'README.md')).read(),
     url='https://github.com/grnet/icaas',
     download_url='https://pypi.python.org/pypi/icaas',
     author='Synnefo development team',
