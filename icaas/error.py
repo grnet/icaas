@@ -18,18 +18,23 @@
 
 """Module to handle API errors"""
 
+import logging
 
-class InvalidAPIUsage(Exception):
-    """Implements the Invalid API Usage Exception"""
-    status_code = 400
+logger = logging.getLogger(__name__)
+
+
+class Error(Exception):
+    """Implements the Error Exception"""
+    status = 400
 
     def __init__(self, message, status=None, payload=None):
         """Initialize an InvalidUsage instance"""
-        Exception.__init__(self)
+        super(Error, self).__init__(self)
         self.message = message
         if status is not None:
             self.status = status
         self.payload = payload
+        logger.debug("Error: %s" % self.to_dict())
 
     def to_dict(self):
         rv = dict(self.payload or ())

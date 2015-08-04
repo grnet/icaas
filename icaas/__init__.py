@@ -24,7 +24,7 @@ from flask import Flask, jsonify
 from icaas.version import __version__
 from icaas.models import db
 from icaas.controllers.main import main
-from icaas.error import InvalidAPIUsage
+from icaas.error import Error
 from icaas import settings
 
 
@@ -58,10 +58,10 @@ def create_app(**kwargs):
     db.init_app(app)
 
     # Override the default error handler
-    @app.errorhandler(InvalidAPIUsage)
+    @app.errorhandler(Error)
     def handle_invalid_usage(error):
         response = jsonify(error.to_dict())
-        response.status_code = error.status_code
+        response.status_code = error.status
         return response
 
     # register our blueprints

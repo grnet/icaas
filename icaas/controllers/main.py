@@ -37,7 +37,7 @@ from kamaki.clients.utils import https
 import astakosclient
 
 from icaas.models import Build, User, db
-from icaas.error import InvalidAPIUsage
+from icaas.error import Error
 from icaas.utils import destroy_agent
 from icaas import settings
 
@@ -82,7 +82,7 @@ def login_required(f):
         logger.debug('checking X-Auth-Token before "%s"' % f.__name__)
         if "X-Auth-Token" not in request.headers:
             logger.debug('X-Auth-Token missing')
-            raise InvalidAPIUsage("Token is missing", status=401)
+            raise Error("Token is missing", status=401)
         token = request.headers["X-Auth-Token"]
         astakos = astakosclient.AstakosClient(token, settings.AUTH_URL)
 
@@ -90,10 +90,10 @@ def login_required(f):
             astakos = astakos.authenticate()
         except astakosclient.errors.Unauthorized:
             logger.debug('X-AUTH-Token not valid')
-            raise InvalidAPIUsage("Invalid token", status=401)
+            raise Error("Invalid token", status=401)
         except Exception as e:
             logger.debug("astakosclient: '%s'" % str(e))
-            raise InvalidAPIUsage("Internal server error", status=500)
+            raise Error("Internal server error", status=500)
 
         uuid = astakos['access']['user']['id']
         user = User.query.filter_by(uuid=uuid).first()
@@ -118,12 +118,12 @@ def update(buildid):
     logger.info("update build %d" % buildid)
 
     if "X-Icaas-Token" not in request.headers:
-        raise InvalidAPIUsage("Missing ICaaS token", status=401)
+        raise Error("Missing ICaaS token", status=401)
     token = request.headers["X-Icaas-Token"]
 
     build = Build.query.filter_by(id=buildid, token=token).first()
     if build is None:
-        raise InvalidAPIUsage("Build not found", status=404)
+        raise Error("Build not found", status=404)
 
     params = request.get_json()
     logger.debug("update build %d with params %s" % (buildid, params))
@@ -131,9 +131,9 @@ def update(buildid):
         status = params.get("status", None)
         reason = params.get("reason", None)
         if not status:
-            raise InvalidAPIUsage("Parameter: 'status' is missing", status=400)
+            raise Error("Parameter: 'status' is missing", status=400)
         if status not in ["ERROR", "COMPLETED"]:
-            raise InvalidAPIUsage("Invalid 'status' parameter", status=400)
+            raise Error("Invalid 'status' parameter", status=400)
 
         build.status = status
         if reason:
@@ -148,8 +148,7 @@ def update(buildid):
 
         return Response(status=200)
 
-    raise InvalidAPIUsage("Parameters 'status' and 'reason' are missing",
-                          status=400)
+    raise Error("Parameters 'status' and 'reason' are missing", status=400)
 
 
 @main.route('/icaas/<int:buildid>', methods=['GET'])
@@ -160,7 +159,7 @@ def view(user, buildid):
 
     build = Build.query.filter_by(id=buildid, user=user.id).first()
     if not build:
-        raise InvalidAPIUsage("Build not found", status=404)
+        raise Error("Build not found", status=404)
 
     d = {"id": build.id,
          "name:": build.name,
@@ -184,7 +183,7 @@ def delete(user, buildid):
 
     build = Build.query.filter_by(id=buildid, user=user.id).first()
     if not build:
-        raise InvalidAPIUsage("Build not found", status=404)
+        raise Error("Build not found", status=404)
     build.deleted = True
     db.session.commit()
 
@@ -208,30 +207,30 @@ def create(user):
         # Image Registration Name
         name = params.get("name", None)
         if not name:
-            raise InvalidAPIUsage(missing % 'name', status=400)
+            raise Error(missing % 'name', status=400)
         # User provided Image URL
         url = params.get("url", None)
         if not url:
-            raise InvalidAPIUsage(missing % 'url', status=400)
+            raise Error(missing % 'url', status=400)
 
         # Pithos image object
         image = params.get("image", None)
         if not image:
-            raise InvalidAPIUsage(missing % 'image', status=400)
+            raise Error(missing % 'image', status=400)
         separator = image.find('/')
         if separator < 1 or separator == len(image) - 1:
-            raise InvalidAPIUsage(invalid % 'image', status=400)
+            raise Error(invalid % 'image', status=400)
         # Pithos log object
         log = params.get("log", None)
         if not log:
-            raise InvalidAPIUsage(missing % 'log', status=400)
+            raise Error(missing % 'log', status=400)
         separator = log.find('/')
         if separator < 1 or separator == len(image) - 1:
-            raise InvalidAPIUsage(invalid % 'log', status=400)
+            raise Error(invalid % 'log', status=400)
     else:
         fields = ['name', 'url', 'image', 'log']
-        raise InvalidAPIUsage('Required fields: "%s" are missing' %
-                              '", "'.join(fields), status=400)
+        raise Error('Required fields: "%s" are missing' % '", "'.join(fields),
+                    status=400)
 
     build = Build(user.id, name, url, None, image, log)
     db.session.add(build)
@@ -259,14 +258,14 @@ def create(user):
         build.erreason = 'icaas agent creation failed'
         db.session.commit()
         logger.error("icaas agent creation failed: (%d, %s)" % (e.status, e))
-        raise InvalidAPIUsage('icaas agent creation failed', e.status,
-                              {'details': e.message})
+        raise Error('icaas agent creation failed', e.status,
+                    {'details': e.message})
     except Exception as e:
         build.status = 'ERROR'
         build.erreason = 'icaas agent creation failed'
         db.session.commit()
         logger.error("icaas agent creation failed: %s" % e)
-        raise InvalidAPIUsage('Internal Server Error', 500)
+        raise Error('Internal Server Error', 500)
 
     logger.debug("create new icaas agent vm: %s" % agent)
     build.agent = agent['id']
