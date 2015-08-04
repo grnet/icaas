@@ -79,7 +79,7 @@ def _create_manifest(url, token, name, log, image, status):
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        logger.debug('checking X-Auth-Token before "%s"' % f.__name__)
+        logger.debug('checking X-Auth-Token before function "%s"' % f.__name__)
         if "X-Auth-Token" not in request.headers:
             logger.debug('X-Auth-Token missing')
             raise Error("Token is missing", status=401)
@@ -88,13 +88,15 @@ def login_required(f):
 
         try:
             astakos = astakos.authenticate()
+            logger.debug('X-Auth-Token is valid')
         except astakosclient.errors.Unauthorized:
-            logger.debug('X-AUTH-Token not valid')
+            logger.debug('X-Auth-Token not valid')
             raise Error("Invalid token", status=401)
         except Exception as e:
-            logger.debug("astakosclient: '%s'" % str(e))
+            logger.debug("astakosclient raised exception: '%s'" % str(e))
             raise Error("Internal server error", status=500)
 
+        logger.debug('checking if user is present in the database')
         uuid = astakos['access']['user']['id']
         user = User.query.filter_by(uuid=uuid).first()
         if not user:
@@ -102,11 +104,13 @@ def login_required(f):
             user.token = token
             db.session.add(user)
             db.session.commit()
-            logger.debug('new user %d' % user.id)
+            logger.debug('added new user %d' % user.id)
         elif user.token != token:
             user.token = token
             db.session.commit()
             logger.debug('update existing user %d' % user.id)
+        else:
+            logger.debug('user %d found' % user.id)
 
         return f(user, *args, **kwargs)
     return decorated_function
