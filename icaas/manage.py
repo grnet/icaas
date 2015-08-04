@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import logging
+import unittest
 
 from flask.ext.script import Manager
 from flask.ext.script.commands import ShowUrls, Clean
@@ -33,6 +34,13 @@ def make_shell_context():
 def createdb():
     """Creates the ICaaS database"""
     db.create_all()
+
+
+@manager.option('-d', '--debug', action='store_true', help='run in debug mode')
+def test(debug):
+    """Run tests"""
+    tests = unittest.TestLoader().discover('icaas')
+    unittest.TextTestRunner(verbosity=2).run(tests)
 
 
 @manager.command

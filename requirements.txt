@@ -3,4 +3,6 @@ kamaki
 flask
 Flask-SQLAlchemy
 Flask-Script
+Flask-Testing
+mock
 
