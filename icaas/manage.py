@@ -5,23 +5,23 @@ import logging
 from flask.ext.script import Manager
 from flask.ext.script.commands import ShowUrls, Clean
 
+from icaas import settings
 from icaas import create_app
 from icaas.models import db, User, Build
 from icaas.utils import exec_on_timeout, destroy_agent
-from icaas import settings
 
 manager = Manager(create_app)
 manager.add_command("show-urls", ShowUrls())
 manager.add_command("clean", Clean())
-manager.add_option('--logfile', metavar="FILE", dest='logfile', default=None,
+manager.add_option('--log-file', metavar="FILE", dest='logfile', default=None,
                    help="Write to this log file [None]")
 manager.add_option('--log-format', metavar="STRING", dest='logformat',
                    help='Set the log format')
 manager.add_option('--log-config', metavar="FILE", dest='logconfig',
                    help="Set the log config file to use [None]", default=None)
 manager.add_option('--log-level', metavar="LEVEL", dest='loglevel',
-                   help="Set the log level threshold [INFO]",
-                   default=logging.INFO)
+                   help="Set the log level threshold [WARNING]",
+                   default=logging.WARNING)
 
 
 @manager.shell
