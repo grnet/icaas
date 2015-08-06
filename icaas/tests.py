@@ -174,12 +174,12 @@ class IcaasTestCase(TestCase):
         """Test deleting an existing build"""
         user, build = create_test_build()
 
-        self.assertEquals(build.deleted, False)
+        self.assertFalse(build.deleted)
 
         rv = self.client.delete('/icaas/%d' % build.id,
                                 headers=[('X-AUTH-Token', user.token)])
         self.assertEquals(rv.status_code, 200)
-        self.assertEquals(build.deleted, True)
+        self.assertTrue(build.deleted)
 
     @patch('astakosclient.AstakosClient.authenticate', astakos_authorized)
     def test_delete_nonexisting_build(self):

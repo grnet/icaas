@@ -36,11 +36,26 @@ def createdb():
     db.create_all()
 
 
-@manager.option('-d', '--debug', action='store_true', help='run in debug mode')
-def test(debug):
+@manager.option('-t', '--test-case', action='append', dest='names',
+                help='Run specific test cases', type=str)
+@manager.option('-s', '--show-tests', action='store_true', dest='show',
+                default=False,
+                help='Show the name of the tests without running them')
+def test(names, show):
     """Run tests"""
-    tests = unittest.TestLoader().discover('icaas')
-    unittest.TextTestRunner(verbosity=2).run(tests)
+    loader = unittest.TestLoader()
+    if not names:
+        tests = loader.loadTestsFromName('icaas.tests.IcaasTestCase')
+    else:
+        tests = unittest.TestSuite()
+        for n in names:
+            tests.addTests(loader.loadTestsFromName(
+                           'icaas.tests.IcaasTestCase.%s' % n))
+    if show:
+        for t in tests:
+            print t
+    else:
+        unittest.TextTestRunner(verbosity=2).run(tests)
 
 
 @manager.command
