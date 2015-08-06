@@ -157,4 +157,37 @@ class IcaasTestCase(TestCase):
         data = json.loads(rv.data)
         self.assertEquals(data['build']['status'], 'COMPLETED')
 
+    def test_update_nonexisting_build(self):
+        """Test updating the status of an nonexisting build"""
+
+        create_test_user()
+
+        rv = self.client.put('/icaas/1',
+                             headers=[('X-Icaas-Token', 'test')],
+                             data=json.dumps({'status': 'COMPLETED'}),
+                             content_type='application/json')
+
+        self.assertEquals(rv.status_code, 404)
+
+    @patch('astakosclient.AstakosClient.authenticate', astakos_authorized)
+    def test_delete_build(self):
+        """Test deleting an existing build"""
+        user, build = create_test_build()
+
+        self.assertEquals(build.deleted, False)
+
+        rv = self.client.delete('/icaas/%d' % build.id,
+                                headers=[('X-AUTH-Token', user.token)])
+        self.assertEquals(rv.status_code, 200)
+        self.assertEquals(build.deleted, True)
+
+    @patch('astakosclient.AstakosClient.authenticate', astakos_authorized)
+    def test_delete_nonexisting_build(self):
+        """Test deleting a nonexisting build"""
+
+        user = create_test_user()
+        rv = self.client.delete('/icaas/1',
+                                headers=[('X-AUTH-Token', user.token)])
+        self.assertEquals(rv.status_code, 404)
+
 # vim: set sta sts=4 shiftwidth=4 sw=4 et ai :
