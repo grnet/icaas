@@ -24,13 +24,13 @@ import sys
 # import the default settings
 from icaas.settings.default import *  # noqa
 
-ICAAS_CONFIG = os.environ.get('ICAAS_CONFIG', '/etc/icaas.conf')
-if os.path.exists(ICAAS_CONFIG):
+CONFIG = os.environ.get('ICAAS_CONFIG', '/etc/icaas.conf')
+if os.path.exists(CONFIG):
     try:
-        execfile(ICAAS_CONFIG)
+        execfile(CONFIG)
     except Exception as e:
         sys.stderr.write('Failed to read settings file: %s. Reason: %r\n'
-                         % (ICAAS_CONFIG, e))
+                         % (CONFIG, e))
         raise SystemExit(1)
 
 # Overwrite the value of a setting if the environment variable
