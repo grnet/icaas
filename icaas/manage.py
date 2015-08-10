@@ -12,7 +12,7 @@ from icaas.models import db, User, Build
 from icaas.utils import exec_on_timeout, destroy_agent
 
 manager = Manager(create_app)
-manager.add_command("show-urls", ShowUrls())
+manager.add_command("showurls", ShowUrls())
 manager.add_command("clean", Clean())
 manager.add_option('--log-file', metavar="FILE", dest='logfile', default=None,
                    help="Write to this log file [None]")
