@@ -150,7 +150,7 @@ def update(buildid):
         elif status == 'ERROR':
             logger.warning('not deleting the agent VM on errors in debug mode')
 
-        return Response(status=200)
+        return Response(status=202)
 
     raise Error("Parameters 'status' and 'status_details' are missing",
                 status=400)
@@ -284,7 +284,9 @@ def create(user):
     build.status_details = 'started icaas agent creation'
     db.session.commit()
 
-    return jsonify(id=build.id)
+    response = jsonify(id=build.id)
+    response.status_code = 202
+    return response
 
 
 @main.route('/icaas', methods=['GET'])
