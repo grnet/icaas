@@ -159,7 +159,7 @@ def update(buildid):
 @login_required
 def view(user, buildid):
     """View a specific build entry"""
-    logger.info("view buildid %d by user %s" % (buildid, user.id))
+    logger.info("view build %d by user %s" % (buildid, user.id))
 
     build = Build.query.filter_by(id=buildid, user=user.id).first()
     if not build:
@@ -231,6 +231,10 @@ def create(user):
         separator = log.find('/')
         if separator < 1 or separator == len(image) - 1:
             raise Error(invalid % 'log', status=400)
+        # Project to assign the agent VM to
+        project = params.get("project", None)
+        # Networks of the agent VM
+        networks = params.get("networks", None)
     else:
         fields = ['name', 'url', 'image', 'log']
         raise Error('Required fields: "%s" are missing' % '", "'.join(fields),
@@ -256,6 +260,7 @@ def create(user):
         agent = compute.create_server("icaas-agent-%s-%s" % (build.id, date),
                                       settings.AGENT_IMAGE_FLAVOR_ID,
                                       settings.AGENT_IMAGE_ID,
+                                      project_id=project, networks=networks,
                                       personality=personality)
     except ClientError as e:
         build.status = 'ERROR'
