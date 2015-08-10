@@ -133,15 +133,15 @@ def update(buildid):
     logger.debug("update build %d with params %s" % (buildid, params))
     if params:
         status = params.get("status", None)
-        reason = params.get("reason", None)
+        details = params.get("details", None)
         if not status:
             raise Error("Parameter: 'status' is missing", status=400)
-        if status not in ["ERROR", "COMPLETED"]:
+        if status not in ["CREATING", "ERROR", "COMPLETED"]:
             raise Error("Invalid 'status' parameter", status=400)
 
         build.status = status
-        if reason:
-            build.erreason = reason
+        if details:
+            build.status_details = details
         db.session.commit()
 
         # Should we delete the agent VM?
@@ -152,7 +152,8 @@ def update(buildid):
 
         return Response(status=200)
 
-    raise Error("Parameters 'status' and 'reason' are missing", status=400)
+    raise Error("Parameters 'status' and 'status_details' are missing",
+                status=400)
 
 
 @main.route('/icaas/<int:buildid>', methods=['GET'])
@@ -169,6 +170,7 @@ def view(user, buildid):
          "name:": build.name,
          "src": build.src,
          "status": build.status,
+         "status_details": build.status_details,
          "image": build.image,
          "log": build.log,
          "created": build.created,
@@ -264,14 +266,14 @@ def create(user):
                                       personality=personality)
     except ClientError as e:
         build.status = 'ERROR'
-        build.erreason = 'icaas agent creation failed'
+        build.status_details = 'icaas agent creation failed'
         db.session.commit()
         logger.error("icaas agent creation failed: (%d, %s)" % (e.status, e))
         raise Error('icaas agent creation failed', e.status,
                     {'details': e.message})
     except Exception as e:
         build.status = 'ERROR'
-        build.erreason = 'icaas agent creation failed'
+        build.status_details = 'icaas agent creation failed'
         db.session.commit()
         logger.error("icaas agent creation failed: %s" % e)
         raise Error('Internal Server Error', 500)
@@ -279,6 +281,7 @@ def create(user):
     logger.debug("create new icaas agent vm: %s" % agent)
     build.agent = agent['id']
     build.agent_alive = True
+    build.status_details = 'started icaas agent creation'
     db.session.commit()
 
     return jsonify(id=build.id)

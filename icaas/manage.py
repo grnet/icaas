@@ -79,7 +79,7 @@ def timeout(minutes, dry_run):
         """Put a build that timed out to error state"""
         if build.status != 'COMPLETED':
             build.status = 'ERROR'
-            build.erreason = 'timed out'
+            build.status_details = 'timed out'
             db.session.commit()
         return destroy_agent(build)
 

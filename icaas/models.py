@@ -33,7 +33,7 @@ class Build(db.Model):
     # Image Registration Name
     name = db.Column(db.String(256), unique=False)
     # Build status (Creating|Completed|Error)
-    status = db.Column(db.String(32), default="Creating")
+    status = db.Column(db.String(32), default="CREATING")
     # ID of the ICaaS agent VM
     agent = db.Column(db.String(128))
     # Is the ICaaS agent alive?
@@ -51,8 +51,8 @@ class Build(db.Model):
                         onupdate=datetime.utcnow)
     # Is the build deleted?
     deleted = db.Column(db.Boolean, default=False)
-    # Reason of Error
-    erreason = db.Column(db.String(256))
+    # Detailed description of the current status
+    status_details = db.Column(db.String(256), default="Creating...")
     # ICaaS session token
     token = db.Column(db.String(32))
     # Index to be used to check if the agent VM timed out
