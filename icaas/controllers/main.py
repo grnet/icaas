@@ -56,6 +56,21 @@ def _build_to_links(build):
     return [{"href": url, "rel": "self"}]
 
 
+def _build_to_dict(build):
+    d = {"id": build.id,
+         "name:": build.name,
+         "src": build.src,
+         "status": build.status,
+         "image": build.image,
+         "log": build.log,
+         "created": build.created,
+         "updated": build.updated,
+         "deleted": build.deleted,
+         "links": _build_to_links(build)}
+
+    return d
+
+
 def _create_manifest(url, token, name, log, image, status):
     """Create manifest file to be injected to the ICaaS Agent VM"""
     config = ConfigParser.ConfigParser()
@@ -166,19 +181,7 @@ def view(user, buildid):
     if not build:
         raise Error("Build not found", status=404)
 
-    d = {"id": build.id,
-         "name:": build.name,
-         "src": build.src,
-         "status": build.status,
-         "status_details": build.status_details,
-         "image": build.image,
-         "log": build.log,
-         "created": build.created,
-         "updated": build.updated,
-         "deleted": build.deleted,
-         "links": _build_to_links(build)}
-
-    return jsonify({"build": d})
+    return jsonify({"build": _build_to_dict(build)})
 
 
 @main.route('/icaas/<int:buildid>', methods=['DELETE'])
@@ -284,7 +287,7 @@ def create(user):
     build.status_details = 'started icaas agent creation'
     db.session.commit()
 
-    response = jsonify(id=build.id)
+    response = jsonify({"build": _build_to_dict(build)})
     response.status_code = 202
     return response
 
