@@ -126,7 +126,7 @@ class IcaasTestCase(TestCase):
         rv = self.client.post('/icaas', headers=[('X-Auth-Token', USER_TOKEN)],
                               data=json.dumps(data),
                               content_type='application/json')
-        self.assertEquals(json.loads(rv.data)['id'], 1)
+        self.assertEquals(json.loads(rv.data)['build']['id'], 1)
         builds = Build.query.all()
         self.assertEquals(len(builds), 1)
         build = builds[0]
@@ -149,7 +149,7 @@ class IcaasTestCase(TestCase):
                              data=json.dumps({'status': 'COMPLETED'}),
                              content_type='application/json')
 
-        self.assertEquals(rv.status_code, 200)
+        self.assertEquals(rv.status_code, 202)
 
         rv = self.client.get('/icaas/%d' % build.id,
                              headers=[('X-AUTH-Token', USER_TOKEN)])
