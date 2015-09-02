@@ -71,19 +71,24 @@ def _build_to_dict(build):
     return d
 
 
-def _create_manifest(url, token, name, log, image, status):
+def _create_manifest(src, name, log, image, token, buildid, icaas_token):
     """Create manifest file to be injected to the ICaaS Agent VM"""
     config = ConfigParser.ConfigParser()
     config.add_section("service")
+    config.add_section("synnefo")
     config.add_section("image")
-    config.set("image", "url", url)
+
+    config.set("image", "src", src)
     config.set("image", "name", name)
     config.set("image", "object", image)
 
-    config.set("service", "url", settings.AUTH_URL)
-    config.set("service", "token", token)
-    config.set("service", "log", log)
-    config.set("service", "status", status)
+    config.set("service", "status", "%s%s" % (settings.ENDPOINT, buildid))
+    config.set("service", "token", icaas_token)
+    config.set("service", "insecure", settings.INSECURE)
+
+    config.set("synnefo", "url", settings.AUTH_URL)
+    config.set("synnefo", "token", token)
+    config.set("synnefo", "log", log)
     logger.debug("icaas-agent manifest file: %r" % config._sections)
 
     manifest = StringIO.StringIO()
@@ -250,8 +255,8 @@ def create(user):
     db.session.commit()
     logger.debug('created build %r' % build.id)
 
-    status = "%s%s#%s" % (settings.ENDPOINT, build.id, build.token)
-    manifest = _create_manifest(url, token, name, log, image, status)
+    manifest = _create_manifest(url, name, log, image, token, build.id,
+                                build.token)
 
     personality = [
         {'contents': b64encode(manifest), 'path': AGENT_CONFIG,

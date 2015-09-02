@@ -46,4 +46,8 @@ DEBUG = True
 # ICaaS endpoint URL to be used by the agent VM to update the build status
 ENDPOINT = "http://example.org/icaas/"
 
+# This options allows the ICaaS agent to perform "insecure" SSL connections
+# when communicating with the ICaaS service through the endpoint URL
+INSECURE = False
+
 # vim: ai ts=4 sts=4 et sw=4 ft=python
