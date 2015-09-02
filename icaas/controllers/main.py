@@ -215,8 +215,13 @@ def create(user):
     params = request.get_json()
     logger.debug("create build with params %s" % params)
     if params:
-        missing = "Parameter: '%s' is missing or empty"
-        invalid = "'%s' parameter's value not in <container>/<path> format"
+        params = params.get("build", None)
+    else:
+        raise Error('Required field "build" is missing')
+
+    if params:
+        missing = "Parameter: '%s' is missing from namespace 'build' or empty"
+        invalid = "%s parameter's value not in <container>/<path> format"
 
         # Image Registration Name
         name = params.get("name", None)
@@ -247,8 +252,8 @@ def create(user):
         networks = params.get("networks", None)
     else:
         fields = ['name', 'src', 'image', 'log']
-        raise Error('Required fields: "%s" are missing' % '", "'.join(fields),
-                    status=400)
+        raise Error('Required fields: "%s" are missing from namespace "build"'
+                    % '", "'.join(fields), status=400)
 
     build = Build(user.id, name, src, None, image, log)
     db.session.add(build)
