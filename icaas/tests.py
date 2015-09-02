@@ -121,7 +121,7 @@ class IcaasTestCase(TestCase):
     def test_create_image(self):
         """Test creating a new image"""
         data = dict(name='PAOK', image='pithos/image.diskdump',
-                    log='pithos/log', url='http://example.org')
+                    log='pithos/log', src='http://example.org')
 
         rv = self.client.post('/icaas', headers=[('X-Auth-Token', USER_TOKEN)],
                               data=json.dumps(data),

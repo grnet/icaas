@@ -223,9 +223,9 @@ def create(user):
         if not name:
             raise Error(missing % 'name', status=400)
         # User provided Image URL
-        url = params.get("url", None)
-        if not url:
-            raise Error(missing % 'url', status=400)
+        src = params.get("src", None)
+        if not src:
+            raise Error(missing % 'src', status=400)
 
         # Pithos image object
         image = params.get("image", None)
@@ -246,16 +246,16 @@ def create(user):
         # Networks of the agent VM
         networks = params.get("networks", None)
     else:
-        fields = ['name', 'url', 'image', 'log']
+        fields = ['name', 'src', 'image', 'log']
         raise Error('Required fields: "%s" are missing' % '", "'.join(fields),
                     status=400)
 
-    build = Build(user.id, name, url, None, image, log)
+    build = Build(user.id, name, src, None, image, log)
     db.session.add(build)
     db.session.commit()
     logger.debug('created build %r' % build.id)
 
-    manifest = _create_manifest(url, name, log, image, token, build.id,
+    manifest = _create_manifest(src, name, log, image, token, build.id,
                                 build.token)
 
     personality = [
