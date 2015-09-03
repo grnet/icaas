@@ -52,7 +52,8 @@ class Build(db.Model):
     # Is the build deleted?
     deleted = db.Column(db.Boolean, default=False)
     # Detailed description of the current status
-    status_details = db.Column(db.String(256), default="Creating...")
+    status_details = db.Column(db.String(256),
+                               default="build request accepted")
     # ICaaS session token
     token = db.Column(db.String(32))
     # Index to be used to check if the agent VM timed out

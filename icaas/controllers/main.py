@@ -21,7 +21,8 @@ from flask import (
     request,
     jsonify,
     Response,
-    Blueprint
+    Blueprint,
+    copy_current_request_context
 )
 
 from functools import wraps
@@ -30,6 +31,7 @@ from base64 import b64encode
 import ConfigParser
 import StringIO
 import logging
+import threading
 
 from kamaki.clients import cyclades, ClientError
 from kamaki.clients.utils import https
@@ -61,6 +63,7 @@ def _build_to_dict(build):
          "name:": build.name,
          "src": build.src,
          "status": build.status,
+         "status_details": build.status_details,
          "image": build.image,
          "log": build.log,
          "created": build.created,
@@ -260,45 +263,70 @@ def create(user):
     db.session.commit()
     logger.debug('created build %r' % build.id)
 
-    manifest = _create_manifest(src, name, log, image, token, build.id,
-                                build.token)
+    # Check comment below to see why we are doing this
+    buildid = build.id
 
-    personality = [
-        {'contents': b64encode(manifest), 'path': AGENT_CONFIG,
-         'owner': 'root', 'group': 'root', 'mode': 0600},
-        {'contents': b64encode("empty"), 'path': AGENT_INIT,
-         'owner': 'root', 'group': 'root', 'mode': 0600}]
+    @copy_current_request_context
+    def create_agent():
+        """Create ICaaS agent VM"""
 
-    compute = cyclades.CycladesComputeClient(settings.COMPUTE_URL, token)
-    date = datetime.now().strftime('%Y%m%d%H%M%S%f')
-    try:
-        agent = compute.create_server("icaas-agent-%s-%s" % (build.id, date),
-                                      settings.AGENT_IMAGE_FLAVOR_ID,
-                                      settings.AGENT_IMAGE_ID,
-                                      project_id=project, networks=networks,
-                                      personality=personality)
-    except ClientError as e:
-        build.status = 'ERROR'
-        build.status_details = 'icaas agent creation failed'
+        # This is needed because the original build object is attached to the
+        # session of the father thread and any changes made to it from this
+        # thread won't be committed to the database using db.session.commit()
+        build = Build.query.filter_by(id=buildid).first()
+        if build is None:
+            # Normally this cannot happen
+            logger.error('Build with id=%d not found!' % build.id)
+            return
+
+        manifest = _create_manifest(src, name, log, image, token, build.id,
+                                    build.token)
+
+        personality = [
+            {'contents': b64encode(manifest), 'path': AGENT_CONFIG,
+             'owner': 'root', 'group': 'root', 'mode': 0600},
+            {'contents': b64encode("empty"), 'path': AGENT_INIT,
+             'owner': 'root', 'group': 'root', 'mode': 0600}]
+
+        compute = cyclades.CycladesComputeClient(settings.COMPUTE_URL, token)
+        date = datetime.now().strftime('%Y%m%d%H%M%S%f')
+        try:
+            agent = compute.create_server("icaas-agent-%s-%s" %
+                                          (build.id, date),
+                                          settings.AGENT_IMAGE_FLAVOR_ID,
+                                          settings.AGENT_IMAGE_ID,
+                                          project_id=project,
+                                          networks=networks,
+                                          personality=personality)
+        except ClientError as e:
+            build.status = 'ERROR'
+            build.status_details = "icaas agent creation failed: (%d, %s)" \
+                % (e.status, e)
+            db.session.commit()
+            logger.error("icaas agent creation failed: (%d, %s)"
+                         % (e.status, e))
+            return
+        except Exception as e:
+            build.status = 'ERROR'
+            build.status_details = 'icaas agent creation failed'
+            with current_ap.app_context():
+                db.session.commit()
+            logger.error("icaas agent creation failed: %s" % e)
+            return
+
+        logger.debug("create new icaas agent vm: %s" % agent)
+        build.agent = agent['id']
+        build.agent_alive = True
+        build.status_details = 'started icaas agent creation'
         db.session.commit()
-        logger.error("icaas agent creation failed: (%d, %s)" % (e.status, e))
-        raise Error('icaas agent creation failed', e.status,
-                    {'details': e.message})
-    except Exception as e:
-        build.status = 'ERROR'
-        build.status_details = 'icaas agent creation failed'
-        db.session.commit()
-        logger.error("icaas agent creation failed: %s" % e)
-        raise Error('Internal Server Error', 500)
 
-    logger.debug("create new icaas agent vm: %s" % agent)
-    build.agent = agent['id']
-    build.agent_alive = True
-    build.status_details = 'started icaas agent creation'
-    db.session.commit()
+    thread = threading.Thread(target=create_agent)
+    thread.daemon = False
 
     response = jsonify({"build": _build_to_dict(build)})
     response.status_code = 202
+
+    thread.start()
     return response
 
 
