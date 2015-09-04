@@ -169,7 +169,23 @@ def update(buildid):
 
         # Should we delete the agent VM?
         if status == "COMPLETED" or (status == "ERROR" and not settings.DEBUG):
-            destroy_agent(build)
+            # Check create_agent() to see why we are doing this
+            buildid = build.id
+
+            @copy_current_request_context
+            def destroy_agent_wrapper():
+                """Thread that will kill the agent VM"""
+                # Check create_agent() to see why we are doing this
+                build = Build.query.filter_by(id=buildid).first()
+                if build is None:
+                    # Normally this cannot happen
+                    logger.error('Build with id=%d not found!' % build.id)
+                    return
+                destroy_agent(build)
+
+            thread = threading.Thread(target=destroy_agent_wrapper)
+            thread.daemon = False
+            thread.start()
         elif status == 'ERROR':
             logger.warning('not deleting the agent VM on errors in debug mode')
 
