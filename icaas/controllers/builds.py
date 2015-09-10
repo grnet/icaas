@@ -45,7 +45,7 @@ from icaas import settings
 
 https.patch_with_certs(settings.KAMAKI_SSL_LOCATION)
 
-main = Blueprint('main', __name__)
+builds = Blueprint('builds', __name__)
 
 AGENT_CONFIG = "/etc/icaas/manifest.cfg"
 AGENT_INIT = "/.icaas"
@@ -139,7 +139,7 @@ def login_required(f):
     return decorated_function
 
 
-@main.route('/icaas/<int:buildid>', methods=['PUT'])
+@builds.route('/icaas/builds/<int:buildid>', methods=['PUT'])
 def update(buildid):
     """Update the build status"""
     logger.info("update build %d" % buildid)
@@ -195,7 +195,7 @@ def update(buildid):
                 status=400)
 
 
-@main.route('/icaas/<int:buildid>', methods=['GET'])
+@builds.route('/icaas/builds/<int:buildid>', methods=['GET'])
 @login_required
 def view(user, buildid):
     """View a specific build entry"""
@@ -208,7 +208,7 @@ def view(user, buildid):
     return jsonify({"build": _build_to_dict(build)})
 
 
-@main.route('/icaas/<int:buildid>', methods=['DELETE'])
+@builds.route('/icaas/builds/<int:buildid>', methods=['DELETE'])
 @login_required
 def delete(user, buildid):
     """Delete an existing build entry"""
@@ -223,7 +223,7 @@ def delete(user, buildid):
     return Response(status=200)
 
 
-@main.route('/icaas', methods=['POST'])
+@builds.route('/icaas/builds', methods=['POST'])
 @login_required
 def create(user):
     """Create a new image with ICaaS"""
@@ -346,7 +346,7 @@ def create(user):
     return response
 
 
-@main.route('/icaas', methods=['GET'])
+@builds.route('/icaas/builds', methods=['GET'])
 @login_required
 def list_builds(user):
     """List the builds owned by a user"""
