@@ -346,8 +346,7 @@ def create(user):
         except Exception as e:
             build.status = 'ERROR'
             build.status_details = 'icaas agent creation failed'
-            with current_ap.app_context():
-                db.session.commit()
+            db.session.commit()
             logger.error("icaas agent creation failed: %s" % e)
             return
 
