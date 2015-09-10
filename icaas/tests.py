@@ -18,6 +18,7 @@
 
 
 import logging
+import threading
 
 from flask import json
 from flask.ext.testing import TestCase
@@ -89,9 +90,39 @@ class IcaasTestCase(TestCase):
     def create_app(self):
         """Create the Flask application"""
         settings.SQLALCHEMY_DATABASE_URI = "sqlite://"
+
+        # monkey patch apply_driver_hacks() method to use StaticPool which
+        # shares one connection among all threads. This is needed because
+        # sqlite in-memory database ceases to exist as soon as the database
+        # connection is closed. Opening 2 database connections (one for each
+        # thread) will create two independent in-memory databases. This is
+        # fixed in Flask-SQLAlchemy but the patch hasn't reached any stable
+        # version yet.
+        def sqlite_inmemory_hacks(self, app, info, options):
+            pool_size = options.get('pool_size')
+
+            from sqlalchemy.pool import StaticPool
+            options['poolclass'] = StaticPool
+            if 'connect_args' not in options:
+                options['connect_args'] = {}
+                options['connect_args']['check_same_thread'] = False
+
+            if pool_size == 0:
+                    raise RuntimeError('SQLite in memory database with an '
+                                       'empty queue not possible due to data '
+                                       'loss.')
+            from sqlalchemy.pool import StaticPool
+            options['poolclass'] = StaticPool
+
+        import types
+        db.apply_driver_hacks = types.MethodType(sqlite_inmemory_hacks, db)
+
         app = create_app()
         app.config['TESTING'] = True
         app.config['WTF_CSRF_ENABLED'] = False
+        # The preserve context thing is needed when testing.
+        # Check : https://github.com/jarus/flask-testing/issues/21
+        app.config['PRESERVE_CONTEXT_ON_EXCEPTION'] = False
         return app
 
     def setUp(self):
@@ -106,13 +137,15 @@ class IcaasTestCase(TestCase):
     @patch('astakosclient.AstakosClient.authenticate', astakos_authorized)
     def test_authorized(self):
         """Test an authorized access request"""
-        rv = self.client.get('/icaas', headers=[('X-Auth-Token', 'test')])
+        rv = self.client.get('/icaas/builds',
+                             headers=[('X-Auth-Token', 'test')])
         self.assertEquals(rv.status_code, 200)
 
     @patch('astakosclient.AstakosClient.authenticate', astakos_unauthorized)
     def test_unauthorized(self):
         """Test an unauthorized access request"""
-        rv = self.client.get('/icaas', headers=[('X-Auth-Token', 'test')])
+        rv = self.client.get('/icaas/builds',
+                             headers=[('X-Auth-Token', 'test')])
         self.assertEquals(rv.status_code, 401)
 
     @patch('astakosclient.AstakosClient.authenticate', astakos_authorized)
@@ -123,9 +156,16 @@ class IcaasTestCase(TestCase):
         data = dict(build=dict(name='PAOK', image='pithos/image.diskdump',
                                log='pithos/log', src='http://example.org'))
 
-        rv = self.client.post('/icaas', headers=[('X-Auth-Token', USER_TOKEN)],
+        rv = self.client.post('/icaas/builds',
+                              headers=[('X-Auth-Token', USER_TOKEN)],
                               data=json.dumps(data),
                               content_type='application/json')
+
+        # Wait for the agent creation thread to finish
+        for t in threading.enumerate():
+            if t.name.startswith('CreateAgentThread'):
+                t.join()
+
         self.assertEquals(json.loads(rv.data)['build']['id'], 1)
         builds = Build.query.all()
         self.assertEquals(len(builds), 1)
@@ -144,25 +184,31 @@ class IcaasTestCase(TestCase):
 
         user, build = create_test_build()
 
-        rv = self.client.put('/icaas/%d' % build.id,
+        rv = self.client.put('/icaas/builds/%d' % build.id,
                              headers=[('X-Icaas-Token', build.token)],
                              data=json.dumps({'status': 'COMPLETED'}),
                              content_type='application/json')
 
         self.assertEquals(rv.status_code, 202)
 
-        rv = self.client.get('/icaas/%d' % build.id,
+        # Wait for the agent destruction thread to finish
+        for t in threading.enumerate():
+            if t.name.startswith('DestroyAgentThread'):
+                t.join()
+
+        rv = self.client.get('/icaas/builds/%d' % build.id,
                              headers=[('X-AUTH-Token', USER_TOKEN)])
         self.assertEquals(rv.status_code, 200)
         data = json.loads(rv.data)
         self.assertEquals(data['build']['status'], 'COMPLETED')
+        self.assertFalse(build.agent_alive)
 
     def test_update_nonexisting_build(self):
         """Test updating the status of an nonexisting build"""
 
         create_test_user()
 
-        rv = self.client.put('/icaas/1',
+        rv = self.client.put('/icaas/builds/1',
                              headers=[('X-Icaas-Token', 'test')],
                              data=json.dumps({'status': 'COMPLETED'}),
                              content_type='application/json')
@@ -170,13 +216,15 @@ class IcaasTestCase(TestCase):
         self.assertEquals(rv.status_code, 404)
 
     @patch('astakosclient.AstakosClient.authenticate', astakos_authorized)
+    @patch('kamaki.clients.cyclades.CycladesComputeClient.delete_server',
+           kamaki_delete_server)
     def test_delete_build(self):
         """Test deleting an existing build"""
         user, build = create_test_build()
 
         self.assertFalse(build.deleted)
 
-        rv = self.client.delete('/icaas/%d' % build.id,
+        rv = self.client.delete('/icaas/builds/%d' % build.id,
                                 headers=[('X-AUTH-Token', user.token)])
         self.assertEquals(rv.status_code, 200)
         self.assertTrue(build.deleted)
@@ -186,7 +234,7 @@ class IcaasTestCase(TestCase):
         """Test deleting a nonexisting build"""
 
         user = create_test_user()
-        rv = self.client.delete('/icaas/1',
+        rv = self.client.delete('/icaas/builds/1',
                                 headers=[('X-AUTH-Token', user.token)])
         self.assertEquals(rv.status_code, 404)
 
