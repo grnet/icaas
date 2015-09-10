@@ -183,7 +183,8 @@ def update(buildid):
                     return
                 destroy_agent(build)
 
-            thread = threading.Thread(target=destroy_agent_wrapper)
+            thread = threading.Thread(target=destroy_agent_wrapper,
+                                      name="DestroyAgentThread-%d" % build.id)
             thread.daemon = False
             thread.start()
         elif status == 'ERROR':
@@ -236,7 +237,8 @@ def delete(user, buildid):
         destroy_agent(build)
 
     if build.agent_alive:
-        thread = threading.Thread(target=destroy_agent_wrapper)
+        thread = threading.Thread(target=destroy_agent_wrapper,
+                                  name="DestroyAgentThread-%d" % build.id)
         thread.daemon = False
         thread.start()
 
@@ -356,7 +358,8 @@ def create(user):
         build.status_details = 'started icaas agent creation'
         db.session.commit()
 
-    thread = threading.Thread(target=create_agent)
+    thread = threading.Thread(target=create_agent,
+                              name="CreateAgentThread-%d" % build.id)
     thread.daemon = False
 
     response = jsonify({"build": _build_to_dict(build)})
