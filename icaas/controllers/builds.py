@@ -68,7 +68,6 @@ def _build_to_dict(build):
          "log": build.log,
          "created": build.created,
          "updated": build.updated,
-         "deleted": build.deleted,
          "links": _build_to_links(build)}
 
     return d
@@ -148,7 +147,8 @@ def update(buildid):
         raise Error("Missing ICaaS token", status=401)
     token = request.headers["X-Icaas-Token"]
 
-    build = Build.query.filter_by(id=buildid, token=token).first()
+    build = Build.query.filter_by(id=buildid, token=token,
+                                  deleted=False).first()  # noqa
     if build is None:
         raise Error("Build not found", status=404)
 
@@ -201,7 +201,8 @@ def view(user, buildid):
     """View a specific build entry"""
     logger.info("view build %d by user %s" % (buildid, user.id))
 
-    build = Build.query.filter_by(id=buildid, user=user.id).first()
+    build = Build.query.filter_by(id=buildid, user=user.id,
+                                  deleted=False).first()  # noqa
     if not build:
         raise Error("Build not found", status=404)
 
@@ -214,11 +215,30 @@ def delete(user, buildid):
     """Delete an existing build entry"""
     logger.info("delete buildid %d by user %s" % (buildid, user.id))
 
-    build = Build.query.filter_by(id=buildid, user=user.id).first()
+    build = Build.query.filter_by(id=buildid, user=user.id,
+                                  deleted=False).first()  # noqa
     if not build:
         raise Error("Build not found", status=404)
     build.deleted = True
     db.session.commit()
+
+    buildid = build.id
+
+    @copy_current_request_context
+    def destroy_agent_wrapper():
+        """Thread that will kill the agent VM"""
+        # Check create_agent() to see why we are doing this
+        build = Build.query.filter_by(id=buildid).first()
+        if build is None:
+            # Normally this cannot happen
+            logger.error('Build with id=%d not found!' % build.id)
+            return
+        destroy_agent(build)
+
+    if build.agent_alive:
+        thread = threading.Thread(target=destroy_agent_wrapper)
+        thread.daemon = False
+        thread.start()
 
     return Response(status=200)
 
@@ -289,7 +309,8 @@ def create(user):
         # This is needed because the original build object is attached to the
         # session of the father thread and any changes made to it from this
         # thread won't be committed to the database using db.session.commit()
-        build = Build.query.filter_by(id=buildid).first()
+        build = Build.query.filter_by(id=buildid,
+                                      deleted=False).first()  # noqa
         if build is None:
             # Normally this cannot happen
             logger.error('Build with id=%d not found!' % build.id)
@@ -352,8 +373,7 @@ def list_builds(user):
     """List the builds owned by a user"""
     logger.info('list_builds by user %s' % user.id)
 
-    builds = Build.query.filter(Build.user == user.id,
-                                Build.deleted == False).all()  # noqa
+    builds = Build.query.filter_by(user=user.id, deleted=False).all()  # noqa
     result = [{"links": _build_to_links(i), "id": i.id, "name": i.name} for i
               in builds]
 

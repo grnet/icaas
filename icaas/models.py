@@ -50,7 +50,7 @@ class Build(db.Model):
     updated = db.Column(db.DateTime, default=datetime.utcnow,
                         onupdate=datetime.utcnow)
     # Is the build deleted?
-    deleted = db.Column(db.Boolean, default=False)
+    deleted = db.Column(db.Boolean, default=False, index=True)
     # Detailed description of the current status
     status_details = db.Column(db.String(256),
                                default="build request accepted")
