@@ -32,8 +32,9 @@ class Build(db.Model):
     user = db.Column(db.Integer, db.ForeignKey('user.id'))
     # Image Registration Name
     name = db.Column(db.String(256), unique=False)
-    # Build status (Creating|Completed|Error)
-    status = db.Column(db.String(32), default="CREATING")
+    # Build status
+    status = db.Column(db.Enum('CREATING', 'ERROR', 'COMPLETED',
+                               name='status_types'), default="CREATING")
     # ID of the ICaaS agent VM
     agent = db.Column(db.String(128))
     # Is the ICaaS agent alive?
