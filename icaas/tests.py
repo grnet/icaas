@@ -19,6 +19,7 @@
 
 import logging
 import threading
+import json
 
 from flask import json
 from flask.ext.testing import TestCase
@@ -78,8 +79,10 @@ def create_test_build():
     """Create a test build to be used on the tests"""
     user = create_test_user()
 
-    build = Build(user.id, "Test Image", "http://example.org/image.diskdump",
-                  0, 'images/test.diskdump', 'icaas/log.txt')
+    build = Build(
+        user.id, "Test Image", "http://example.org/image.diskdump",
+        0, dict(container='image', object='test.diskdump'),
+        dict(container='icaas', object='log.txt'))
     db.session.add(build)
     db.session.commit()
     return (user, build)
@@ -153,8 +156,13 @@ class IcaasTestCase(TestCase):
            kamaki_create_server)
     def test_create_image(self):
         """Test creating a new image"""
-        data = dict(build=dict(name='PAOK', image='pithos/image.diskdump',
-                               log='pithos/log', src='http://example.org'))
+
+        image = dict(account="1ad2898a-5879-11e5-993e-1c6f65d381fb",
+                     container='pithos', object='image.diskdump')
+        log = dict(container='pithos', object='log')
+
+        data = dict(build=dict(name='PAOK', image=image, log=log,
+                    src='http://example.org'))
 
         rv = self.client.post('/icaas/builds',
                               headers=[('X-Auth-Token', USER_TOKEN)],
@@ -173,8 +181,8 @@ class IcaasTestCase(TestCase):
         self.assertEquals(build.agent, VM_ID)
         self.assertEquals(build.agent_alive, True)
         self.assertEquals(build.src, 'http://example.org')
-        self.assertEquals(build.image, 'pithos/image.diskdump')
-        self.assertEquals(build.log, 'pithos/log')
+        self.assertEquals(json.loads(build.image), image)
+        self.assertEquals(json.loads(build.log), log)
 
     @patch('astakosclient.AstakosClient.authenticate', astakos_authorized)
     @patch('kamaki.clients.cyclades.CycladesComputeClient.delete_server',

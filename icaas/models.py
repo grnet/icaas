@@ -20,6 +20,8 @@ from flask.ext.sqlalchemy import SQLAlchemy
 from datetime import datetime
 from uuid import uuid4
 
+import json
+
 db = SQLAlchemy()
 
 
@@ -62,12 +64,16 @@ class Build(db.Model):
 
     def __init__(self, user, name, src, agent, image, log):
         """Initialize a Build object"""
+
+        assert type(image) == dict
+        assert type(log) == dict
+
         self.user = user
         self.name = name
         self.src = src
         self.agent = agent
-        self.image = image
-        self.log = log
+        self.image = json.dumps(image)
+        self.log = json.dumps(log)
         self.token = str(uuid4()).replace('-', '')
 
     def __repr__(self):

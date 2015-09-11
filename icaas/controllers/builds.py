@@ -32,6 +32,7 @@ import ConfigParser
 import StringIO
 import logging
 import threading
+import json
 
 from kamaki.clients import cyclades, ClientError
 from kamaki.clients.utils import https
@@ -64,8 +65,8 @@ def _build_to_dict(build):
          "src": build.src,
          "status": build.status,
          "status_details": build.status_details,
-         "image": build.image,
-         "log": build.log,
+         "image": json.loads(build.image),
+         "log": json.loads(build.log),
          "created": build.created,
          "updated": build.updated,
          "links": _build_to_links(build)}
@@ -75,14 +76,22 @@ def _build_to_dict(build):
 
 def _create_manifest(src, name, log, image, token, buildid, icaas_token):
     """Create manifest file to be injected to the ICaaS Agent VM"""
+
+    assert type(log) == dict
+    assert type(image) == dict
+
     config = ConfigParser.ConfigParser()
     config.add_section("service")
     config.add_section("synnefo")
     config.add_section("image")
+    config.add_section("log")
 
     config.set("image", "src", src)
     config.set("image", "name", name)
-    config.set("image", "object", image)
+    config.set("image", "container", image["container"])
+    config.set("image", "object", image["object"])
+    if "account" in image and image["account"]:
+        config.set("image", "account", image["account"])
 
     config.set("service", "status", "%s%s" % (settings.ENDPOINT, buildid))
     config.set("service", "token", icaas_token)
@@ -90,7 +99,12 @@ def _create_manifest(src, name, log, image, token, buildid, icaas_token):
 
     config.set("synnefo", "url", settings.AUTH_URL)
     config.set("synnefo", "token", token)
-    config.set("synnefo", "log", log)
+
+    config.set("log", "container", log["container"])
+    config.set("log", "object", log["object"])
+    if "account" in log and log["account"]:
+        config.set("log", "account", log["account"])
+
     logger.debug("icaas-agent manifest file: %r" % config._sections)
 
     manifest = StringIO.StringIO()
@@ -273,20 +287,24 @@ def create(user):
         if not src:
             raise Error(missing % 'src', status=400)
 
+        def check_dict_fields(name, value, fields):
+            if not value:
+                raise Error(missing % name, status=400)
+            if type(value) != dict:
+                raise Error('"%s" parameter is not a dictionary' % name,
+                            status=400)
+            for f in fields:
+                if f not in value:
+                    raise Error('"%s" field missing from parameter: "%s"' %
+                                (f, name), status=400)
         # Pithos image object
         image = params.get("image", None)
-        if not image:
-            raise Error(missing % 'image', status=400)
-        separator = image.find('/')
-        if separator < 1 or separator == len(image) - 1:
-            raise Error(invalid % 'image', status=400)
+        check_dict_fields('image', image, ('container', 'object'))
+
         # Pithos log object
         log = params.get("log", None)
-        if not log:
-            raise Error(missing % 'log', status=400)
-        separator = log.find('/')
-        if separator < 1 or separator == len(image) - 1:
-            raise Error(invalid % 'log', status=400)
+        check_dict_fields('log', log, ('container', 'object'))
+
         # Project to assign the agent VM to
         project = params.get("project", None)
         # Networks of the agent VM
