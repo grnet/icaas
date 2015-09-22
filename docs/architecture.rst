@@ -1,4 +1,4 @@
-.. _api-guide:
+.. _architecture:
 
 ICaaS Architecture
 ^^^^^^^^^^^^^^^^^^

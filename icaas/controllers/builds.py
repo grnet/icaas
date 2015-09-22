@@ -276,7 +276,6 @@ def create(user):
 
     if params:
         missing = "Parameter: '%s' is missing from namespace 'build' or empty"
-        invalid = "%s parameter's value not in <container>/<path> format"
 
         # Image Registration Name
         name = params.get("name", None)
