@@ -393,9 +393,19 @@ def list_builds(user):
     """List the builds owned by a user"""
     logger.info('list_builds by user %s' % user.id)
 
-    builds = Build.query.filter_by(user=user.id, deleted=False).all()  # noqa
+    # Check if status was provided
+    status = request.args.get('status')
+
+    if not status:
+        blds = Build.query.filter_by(user=user.id, deleted=False).all()  # noqa
+    elif status.upper() in ('CREATING', 'ERROR', 'COMPLETED'):
+        blds = Build.query.filter_by(user=user.id, deleted=False,
+                                     status=status.upper()).all()  # noqa
+    else:
+        raise Error("Invalid value for parameter 'status'. Valid values are: "
+                    "'CREATING', 'ERROR', 'COMPLETED'")
     result = [{"links": _build_to_links(i), "id": i.id, "name": i.name} for i
-              in builds]
+              in blds]
 
     return jsonify({"builds": result})
 

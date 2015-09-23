@@ -132,7 +132,7 @@ Example Create Build Response:
 List Builds
 -----------
 
-List all image builds owned by the user.
+List image builds owned by the user.
 
 .. rubric:: Request
 
@@ -149,6 +149,16 @@ Request Header Value
 ============== =========================
 X-Auth-Token   User authentication token
 ============== =========================
+
+|
+
+============== ======== ===========================================
+List Attribute Required Value
+============== ======== ===========================================
+status         **✘**    Only display Builds that are in this status
+                        (*CREATING*, *COMPLETED*, *ERROR*)
+============== ======== ===========================================
+
 
 .. rubric:: Response
 
@@ -203,6 +213,7 @@ Example List Builds response:
       }
     ]
   }
+
 
 View Build
 ----------

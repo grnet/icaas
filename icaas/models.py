@@ -36,7 +36,8 @@ class Build(db.Model):
     name = db.Column(db.String(256), unique=False)
     # Build status
     status = db.Column(db.Enum('CREATING', 'ERROR', 'COMPLETED',
-                               name='status_types'), default="CREATING")
+                               name='status_types'), default="CREATING",
+                               index=True)
     # ID of the ICaaS agent VM
     agent = db.Column(db.String(128))
     # Is the ICaaS agent alive?
