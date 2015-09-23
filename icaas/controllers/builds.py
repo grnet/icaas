@@ -93,7 +93,8 @@ def _create_manifest(src, name, log, image, token, buildid, icaas_token):
     if "account" in image and image["account"]:
         config.set("image", "account", image["account"])
 
-    config.set("service", "status", "%s%s" % (settings.ENDPOINT, buildid))
+    config.set("service", "status", "%sbuilds/%s" %
+                                    (settings.ENDPOINT, buildid))
     config.set("service", "token", icaas_token)
     config.set("service", "insecure", settings.INSECURE)
 
