@@ -19,7 +19,6 @@
 
 import logging
 import threading
-import json
 
 from flask import json
 from flask.ext.testing import TestCase
@@ -197,7 +196,7 @@ class IcaasTestCase(TestCase):
                              data=json.dumps({'status': 'COMPLETED'}),
                              content_type='application/json')
 
-        self.assertEquals(rv.status_code, 202)
+        self.assertEquals(rv.status_code, 204)
 
         # Wait for the agent destruction thread to finish
         for t in threading.enumerate():
@@ -234,7 +233,7 @@ class IcaasTestCase(TestCase):
 
         rv = self.client.delete('/icaas/builds/%d' % build.id,
                                 headers=[('X-AUTH-Token', user.token)])
-        self.assertEquals(rv.status_code, 200)
+        self.assertEquals(rv.status_code, 204)
         self.assertTrue(build.deleted)
 
     @patch('astakosclient.AstakosClient.authenticate', astakos_authorized)

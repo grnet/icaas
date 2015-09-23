@@ -205,7 +205,7 @@ def update(buildid):
         elif status == 'ERROR':
             logger.warning('not deleting the agent VM on errors in debug mode')
 
-        return Response(status=202)
+        return Response(status=204)
 
     raise Error("Parameters 'status' and 'status_details' are missing",
                 status=400)
@@ -257,7 +257,7 @@ def delete(user, buildid):
         thread.daemon = False
         thread.start()
 
-    return Response(status=200)
+    return Response(status=204)
 
 
 @builds.route('/icaas/builds', methods=['POST'])
