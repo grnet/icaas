@@ -66,6 +66,8 @@ log             ✔        Agent log location on Pithos (dictionary)
 log/account     **✘**    Account of the user to host the log on
 log/container   ✔	 Pithos container to host the log on
 log/object      ✔	 Name for the Pithos object of the log file
+description     **✘**    Image Description (up to 256 characters)
+public          **✘**    Should the image be registered as public? (true|false)
 project         **✘**    ID of the project to assign the agent VM to
 networks        **✘**    A list of network dictionaries. Check the
                          create_server() method of kamaki.clients.compute

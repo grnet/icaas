@@ -63,6 +63,8 @@ def _build_to_dict(build):
     d = {"id": build.id,
          "name:": build.name,
          "src": build.src,
+         "description": build.description,
+         "public": build.public,
          "status": build.status,
          "status_details": build.status_details,
          "image": json.loads(build.image),
@@ -74,11 +76,8 @@ def _build_to_dict(build):
     return d
 
 
-def _create_manifest(src, name, log, image, token, buildid, icaas_token):
+def _create_manifest(build, token):
     """Create manifest file to be injected to the ICaaS Agent VM"""
-
-    assert type(log) == dict
-    assert type(image) == dict
 
     config = ConfigParser.ConfigParser()
     config.add_section("service")
@@ -86,16 +85,23 @@ def _create_manifest(src, name, log, image, token, buildid, icaas_token):
     config.add_section("image")
     config.add_section("log")
 
-    config.set("image", "src", src)
-    config.set("image", "name", name)
+    image = json.loads(build.image)
+    log = json.loads(build.log)
+
+    config.set("image", "src", build.src)
+    config.set("image", "name", build.name)
     config.set("image", "container", image["container"])
     config.set("image", "object", image["object"])
     if "account" in image and image["account"]:
         config.set("image", "account", image["account"])
+    if build.public:
+        config.set("image", "public", True)
+    if len(build.description):
+        config.set("image", "description", build.description)
 
     config.set("service", "status", "%sbuilds/%s" %
-                                    (settings.ENDPOINT, buildid))
-    config.set("service", "token", icaas_token)
+                                    (settings.ENDPOINT, build.id))
+    config.set("service", "token", build.token)
     config.set("service", "insecure", settings.INSECURE)
 
     config.set("synnefo", "url", settings.AUTH_URL)
@@ -305,6 +311,12 @@ def create(user):
         log = params.get("log", None)
         check_dict_fields('log', log, ('container', 'object'))
 
+        # Image description
+        descr = params.get("description", None)
+
+        # Is the image public?
+        public = params.get("public", False)
+
         # Project to assign the agent VM to
         project = params.get("project", None)
         # Networks of the agent VM
@@ -314,7 +326,7 @@ def create(user):
         raise Error('Required fields: "%s" are missing from namespace "build"'
                     % '", "'.join(fields), status=400)
 
-    build = Build(user.id, name, src, None, image, log)
+    build = Build(user.id, name, descr, public, src, None, image, log)
     db.session.add(build)
     db.session.commit()
     logger.debug('created build %r' % build.id)
@@ -336,8 +348,7 @@ def create(user):
             logger.error('Build with id=%d not found!' % build.id)
             return
 
-        manifest = _create_manifest(src, name, log, image, token, build.id,
-                                    build.token)
+        manifest = _create_manifest(build, token)
 
         personality = [
             {'contents': b64encode(manifest), 'path': AGENT_CONFIG,

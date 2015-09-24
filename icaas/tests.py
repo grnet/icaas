@@ -79,8 +79,9 @@ def create_test_build():
     user = create_test_user()
 
     build = Build(
-        user.id, "Test Image", "http://example.org/image.diskdump",
-        0, dict(container='image', object='test.diskdump'),
+        user.id, "Test Image", "Simple Test Image", False,
+        "http://example.org/image.diskdump", 0,
+        dict(container='image', object='test.diskdump'),
         dict(container='icaas', object='log.txt'))
     db.session.add(build)
     db.session.commit()

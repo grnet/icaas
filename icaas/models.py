@@ -33,21 +33,25 @@ class Build(db.Model):
     # User ID
     user = db.Column(db.Integer, db.ForeignKey('user.id'))
     # Image Registration Name
-    name = db.Column(db.String(256), unique=False)
+    name = db.Column(db.String(256))
+    # Image description
+    description = db.Column(db.String(256), default="")
+    # Is the image public?
+    public = db.Column(db.Boolean)
     # Build status
     status = db.Column(db.Enum('CREATING', 'ERROR', 'COMPLETED',
-                               name='status_types'), default="CREATING",
-                               index=True)
+                               name='status_types'),
+                       default="CREATING", index=True)
     # ID of the ICaaS agent VM
     agent = db.Column(db.String(128))
     # Is the ICaaS agent alive?
     agent_alive = db.Column(db.Boolean, default=False)
     # User Provided Image URL
-    src = db.Column(db.String(256), unique=False)
+    src = db.Column(db.String(256))
     # Pithos Image Object
-    image = db.Column(db.String(256), unique=False)
+    image = db.Column(db.String(256))
     # ICaaS creation log in Pithos
-    log = db.Column(db.String(256), unique=False)
+    log = db.Column(db.String(256))
     # Build creation time
     created = db.Column(db.DateTime, default=datetime.utcnow)
     # Build update time
@@ -63,7 +67,7 @@ class Build(db.Model):
     # Index to be used to check if the agent VM timed out
     __table_args__ = (db.Index('agent_alive_index', 'agent_alive', 'created'),)
 
-    def __init__(self, user, name, src, agent, image, log):
+    def __init__(self, user, name, descr, public, src, agent, image, log):
         """Initialize a Build object"""
 
         assert type(image) == dict
@@ -71,6 +75,8 @@ class Build(db.Model):
 
         self.user = user
         self.name = name
+        self.description = descr
+        self.public = public
         self.src = src
         self.agent = agent
         self.image = json.dumps(image)
