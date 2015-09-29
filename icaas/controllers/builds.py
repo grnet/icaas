@@ -79,7 +79,19 @@ def _build_to_dict(build):
 def _create_manifest(build, token):
     """Create manifest file to be injected to the ICaaS Agent VM"""
 
-    config = ConfigParser.ConfigParser()
+    class MyConfigParser(ConfigParser.ConfigParser):
+        def set(self, section, option, value=None):
+            """Set an option."""
+            if isinstance(section, unicode):
+                section = section.encode('utf-8')
+            if isinstance(option, unicode):
+                option = option.encode('utf-8')
+            if isinstance(value, unicode):
+                value = value.encode('utf-8')
+
+            return ConfigParser.ConfigParser.set(self, section, option, value)
+
+    config = MyConfigParser()
     config.add_section("service")
     config.add_section("synnefo")
     config.add_section("image")

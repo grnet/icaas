@@ -161,7 +161,7 @@ class IcaasTestCase(TestCase):
                      container='pithos', object='image.diskdump')
         log = dict(container='pithos', object='log')
 
-        data = dict(build=dict(name='PAOK', image=image, log=log,
+        data = dict(build=dict(name=u'ΠΑΟΚ', image=image, log=log,
                     src='http://example.org'))
 
         rv = self.client.post('/icaas/builds',
