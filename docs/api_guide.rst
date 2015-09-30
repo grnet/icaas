@@ -159,6 +159,7 @@ List Attribute Required Value
 ============== ======== ===========================================
 status         **✘**    Only display Builds that are in this status
                         (*CREATING*, *COMPLETED*, *ERROR*)
+details        **✘**    Display details for each build (1|0)
 ============== ======== ===========================================
 
 

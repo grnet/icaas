@@ -419,6 +419,9 @@ def list_builds(user):
     # Check if status was provided
     status = request.args.get('status')
 
+    # Check if details was provided
+    details = request.args.get('details', '0')
+
     if not status:
         blds = Build.query.filter_by(user=user.id, deleted=False).all()  # noqa
     elif status.upper() in ('CREATING', 'ERROR', 'COMPLETED'):
@@ -427,8 +430,15 @@ def list_builds(user):
     else:
         raise Error("Invalid value for parameter 'status'. Valid values are: "
                     "'CREATING', 'ERROR', 'COMPLETED'")
-    result = [{"links": _build_to_links(i), "id": i.id, "name": i.name} for i
-              in blds]
+
+    if details == '0':
+        result = [{"links": _build_to_links(b), "id": b.id, "name": b.name}
+                  for b in blds]
+    elif details == '1':
+        result = [_build_to_dict(b) for b in blds]
+    else:
+        raise Error("Invalid value for parameter 'details'. Valid values are: "
+                    "'0' and '1'")
 
     return jsonify({"builds": result})
 
