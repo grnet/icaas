@@ -61,7 +61,7 @@ def _build_to_links(build):
 
 def _build_to_dict(build):
     d = {"id": build.id,
-         "name:": build.name,
+         "name": build.name,
          "src": build.src,
          "description": build.description,
          "public": build.public,
