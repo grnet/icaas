@@ -187,12 +187,12 @@ class IcaasTestCase(TestCase):
     @patch('astakosclient.AstakosClient.authenticate', astakos_authorized)
     @patch('kamaki.clients.cyclades.CycladesComputeClient.delete_server',
            kamaki_delete_server)
-    def test_update_build(self):
-        """Test updating the build status"""
+    def test_agent_update_build(self):
+        """Test updating the build status by an agent"""
 
         user, build = create_test_build()
 
-        rv = self.client.put('/icaas/builds/%d' % build.id,
+        rv = self.client.put('/icaas/builds/agent/%d' % build.id,
                              headers=[('X-Icaas-Token', build.token)],
                              data=json.dumps({'status': 'COMPLETED'}),
                              content_type='application/json')
@@ -211,17 +211,50 @@ class IcaasTestCase(TestCase):
         self.assertEquals(data['build']['status'], 'COMPLETED')
         self.assertFalse(build.agent_alive)
 
-    def test_update_nonexisting_build(self):
-        """Test updating the status of an nonexisting build"""
+    def test_agent_update_nonexisting_build(self):
+        """Test updating the status of an nonexisting build by an agent"""
 
         create_test_user()
 
-        rv = self.client.put('/icaas/builds/1',
+        rv = self.client.put('/icaas/builds/agent/1',
                              headers=[('X-Icaas-Token', 'test')],
                              data=json.dumps({'status': 'COMPLETED'}),
                              content_type='application/json')
 
         self.assertEquals(rv.status_code, 404)
+
+    @patch('astakosclient.AstakosClient.authenticate', astakos_authorized)
+    @patch('kamaki.clients.cyclades.CycladesComputeClient.delete_server',
+           kamaki_delete_server)
+    def test_cancel_build(self):
+        """Test canceling a build"""
+
+        user, build = create_test_build()
+
+        rv = self.client.put('/icaas/builds/%d' % build.id,
+                             headers=[('X-AUTH-Token', USER_TOKEN)],
+                             data=json.dumps({'action': 'cancel'}),
+                             content_type='application/json')
+
+        self.assertEquals(rv.status_code, 204)
+
+        # Wait for the agent destruction thread to finish
+        for t in threading.enumerate():
+            if t.name.startswith('DestroyAgentThread'):
+                t.join()
+
+    @patch('astakosclient.AstakosClient.authenticate', astakos_authorized)
+    def test_invalid_update_action(self):
+        """Test when using invalid update actions"""
+
+        user, build = create_test_build()
+
+        rv = self.client.put('/icaas/builds/%d' % build.id,
+                             headers=[('X-AUTH-Token', USER_TOKEN)],
+                             data=json.dumps({'action': 'destroy'}),
+                             content_type='application/json')
+
+        self.assertEquals(rv.status_code, 400)
 
     @patch('astakosclient.AstakosClient.authenticate', astakos_authorized)
     @patch('kamaki.clients.cyclades.CycladesComputeClient.delete_server',

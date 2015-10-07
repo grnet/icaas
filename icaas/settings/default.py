@@ -44,7 +44,7 @@ KAMAKI_SSL_LOCATION = '/etc/ssl/certs/ca-certificates.crt'
 DEBUG = True
 
 # ICaaS endpoint URL to be used by the agent VM to update the build status
-ENDPOINT = "http://example.org/icaas/"
+ENDPOINT = "http://example.org/icaas"
 
 # This options allows the ICaaS agent to perform "insecure" SSL connections
 # when communicating with the ICaaS service through the endpoint URL

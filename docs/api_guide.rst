@@ -10,15 +10,16 @@ API Operations
 
 .. rubric:: ICaaS
 
-========================== ====================== ======
-Description                URI                    Method
-========================== ====================== ======
-`Create <#create-build>`_  ``/icaas/builds``      POST
-`List <#list-builds>`_     ``/icaas/builds``      GET
-`View <#view-build>`_      ``/icaas/builds/<id>`` GET
-`Update <#update-build>`_  ``/icaas/builds/<id>`` PUT
-`Delete <#delete-build>`_  ``/icaas/builds/<id>`` DELETE
-========================== ====================== ======
+====================================== ============================ ======
+Description                            URI                          Method
+====================================== ============================ ======
+`Create <#create-build>`_              ``/icaas/builds``            POST
+`List <#list-builds>`_                 ``/icaas/builds``            GET
+`View <#view-build>`_                  ``/icaas/builds/<id>``       GET
+`Update <#update-build>`_              ``/icaas/builds/<id>``       PUT
+`Agent Update <#agent-update-build>`_  ``/icaas/builds/agent/<id>`` PUT
+`Delete <#delete-build>`_              ``/icaas/builds/<id>``       DELETE
+====================================== ============================ ======
 
 Create Build
 ------------
@@ -296,8 +297,8 @@ Example View Build response:
 Update Build
 ------------
 
-Update build status and reason. This is normally to be used only by the
-ICaaS-agent.
+Perform an action on an active build. For now, the only valid action is
+`cancel`.
 
 .. rubric:: Request
 
@@ -306,6 +307,54 @@ URI                    Method
 ====================== ======
 ``/icaas/builds/<id>`` PUT
 ====================== ======
+
+|
+
+============== =========================
+Request Header Value
+============== =========================
+X-Auth-Token   User authentication token
+============== =========================
+
+Request body contents::
+
+   {
+      status: <status>
+   }
+
+================= ================ ======
+Build Attribute   Required         Value
+================= ================ ======
+action            ✔                cancel
+================= ================ ======
+
+.. rubric:: Response
+
+=========================== ==================================================
+Return Code                 Description
+=========================== ==================================================
+204 (No Content)            Request succeeded
+400 (Bad Request)           Invalid or malformed request
+401 (Unauthorized)          Missing or expired user token
+403 (Forbidden)		    The request is not active. Updating is not allowed
+404 (Not Found)             The requested build does not exist
+500 (Internal Server Error) The request cannot be completed because of an
+                            internal error
+503 (Service Unavailable)   The server is not currently available
+=========================== ==================================================
+
+Agent Update Build
+------------------
+
+Update build status and reason. This is to be used by the ICaaS Agent.
+
+.. rubric:: Request
+
+============================ ======
+URI                          Method
+============================ ======
+``/icaas/builds/agent/<id>`` PUT
+============================ ======
 
 |
 

@@ -39,7 +39,7 @@ class Build(db.Model):
     # Is the image public?
     public = db.Column(db.Boolean)
     # Build status
-    status = db.Column(db.Enum('CREATING', 'ERROR', 'COMPLETED',
+    status = db.Column(db.Enum('CREATING', 'ERROR', 'COMPLETED', 'CANCELED',
                                name='status_types'),
                        default="CREATING", index=True)
     # ID of the ICaaS agent VM
@@ -82,6 +82,15 @@ class Build(db.Model):
         self.image = json.dumps(image)
         self.log = json.dumps(log)
         self.token = str(uuid4()).replace('-', '')
+
+    def is_active(self):
+        """Returns True if the build has not finished yet"""
+        return self.status == 'CREATING'
+
+    @classmethod
+    def get_status_types(cls):
+        """Returns the list of valid status types"""
+        return cls.status.property.columns[0].type.enums
 
     def __repr__(self):
         return '<Build: id %s, name %s>' % (self.id, self.name)

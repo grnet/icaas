@@ -111,7 +111,7 @@ def _create_manifest(build, token):
     if len(build.description):
         config.set("image", "description", build.description)
 
-    config.set("service", "status", "%sbuilds/%s" %
+    config.set("service", "status", "%s/builds/agent/%s" %
                                     (settings.ENDPOINT, build.id))
     config.set("service", "token", build.token)
     config.set("service", "insecure", settings.INSECURE)
@@ -171,10 +171,10 @@ def login_required(f):
     return decorated_function
 
 
-@builds.route('/icaas/builds/<int:buildid>', methods=['PUT'])
-def update(buildid):
-    """Update the build status"""
-    logger.info("update build %d" % buildid)
+@builds.route('/icaas/builds/agent/<int:buildid>', methods=['PUT'])
+def agent_update(buildid):
+    """Update the build status. Only to be used by the ICaaS agent."""
+    logger.info("update build %d by agent" % buildid)
 
     if "X-Icaas-Token" not in request.headers:
         raise Error("Missing ICaaS token", status=401)
@@ -186,14 +186,21 @@ def update(buildid):
         raise Error("Build not found", status=404)
 
     params = request.get_json()
-    logger.debug("update build %d with params %s" % (buildid, params))
+    logger.debug("update build %d by agent with params %s" % (buildid, params))
     if params:
         status = params.get("status", None)
         details = params.get("details", None)
         if not status:
             raise Error("Parameter: 'status' is missing", status=400)
-        if status not in ["CREATING", "ERROR", "COMPLETED"]:
-            raise Error("Invalid 'status' parameter", status=400)
+        if status not in build.get_status_types():
+            raise Error("Parameter: 'status' is not valid", status=400)
+
+        # Updating a build which is in a finished state is not allowed
+        if not build.is_active():
+            raise Error('Build is not active', status=403)
+
+        if status == 'CANCELED':
+            raise Error('Agent cannot cancel a build', status=403)
 
         build.status = status
         if details:
@@ -202,8 +209,6 @@ def update(buildid):
 
         # Should we delete the agent VM?
         if status == "COMPLETED" or (status == "ERROR" and not settings.DEBUG):
-            # Check create_agent() to see why we are doing this
-            buildid = build.id
 
             @copy_current_request_context
             def destroy_agent_wrapper():
@@ -227,6 +232,57 @@ def update(buildid):
 
     raise Error("Parameters 'status' and 'status_details' are missing",
                 status=400)
+
+
+@builds.route('/icaas/builds/<int:buildid>', methods=['PUT'])
+@login_required
+def update(user, buildid):
+    """Update the build status"""
+    logger.info("update the build %d status by user %s" % (buildid, user.id))
+
+    build = Build.query.filter_by(id=buildid, user=user.id,
+                                  deleted=False).first()  # noqa
+    if not build:
+        raise Error("Build not found", status=404)
+
+    params = request.get_json()
+    logger.debug("update build %d with params %s" % (buildid, params))
+
+    if not params:
+        raise Error("Parameter: 'action' is missing", status=400)
+
+    # Check if action was provided
+    action = params.get('action', 'None')
+    if action is None:
+        raise Error("Parameter: 'action' is missing", status=400)
+
+    if action.lower() != 'cancel':
+        raise Error('Invalid action', status=400)
+
+    if not build.is_active():
+        raise Error("Build is not active", status=403)
+
+    build.status = 'CANCELED'
+    build.status_details = "Canceled by the user"
+    db.session.commit()
+
+    @copy_current_request_context
+    def destroy_agent_wrapper():
+        """Thread that will kill the agent VM"""
+        # Check create_agent() to see why we are doing this
+        build = Build.query.filter_by(id=buildid).first()
+        if build is None:
+            # Normally this cannot happen
+            logger.error('Build with id=%d not found!' % build.id)
+            return
+        destroy_agent(build)
+
+    thread = threading.Thread(target=destroy_agent_wrapper,
+                              name="DestroyAgentThread-%d" % build.id)
+    thread.daemon = False
+    thread.start()
+
+    return Response(status=204)
 
 
 @builds.route('/icaas/builds/<int:buildid>', methods=['GET'])
