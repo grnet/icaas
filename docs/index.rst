@@ -2,6 +2,8 @@
 Welcome to icaas's documentation!
 =================================
 
+.. image:: images/logo.png
+
 ICaaS (Image Creation as a Service) is a service to be used in combination with
 a `Synnefo <https://www.synnefo.org/>`_ deployment to easily import and
 register external OS Images on it. The main source of OS images that ICaaS
