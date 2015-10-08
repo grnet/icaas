@@ -1,7 +1,7 @@
 .. _architecture:
 
-ICaaS Architecture
-^^^^^^^^^^^^^^^^^^
+Architecture
+^^^^^^^^^^^^
 
 ICaaS was designed to work in a way that:
 
