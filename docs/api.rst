@@ -8,18 +8,15 @@ This is ICaaSs' REST API Reference.
 API Operations
 ==============
 
-.. rubric:: ICaaS
-
-====================================== ============================ ======
-Description                            URI                          Method
-====================================== ============================ ======
-`Create <#create-build>`_              ``/icaas/builds``            POST
-`List <#list-builds>`_                 ``/icaas/builds``            GET
-`View <#view-build>`_                  ``/icaas/builds/<id>``       GET
-`Update <#update-build>`_              ``/icaas/builds/<id>``       PUT
-`Agent Update <#agent-update-build>`_  ``/icaas/builds/agent/<id>`` PUT
-`Delete <#delete-build>`_              ``/icaas/builds/<id>``       DELETE
-====================================== ============================ ======
+====================================== ====================== ======
+Description                            URI                    Method
+====================================== ====================== ======
+`Create <#create-build>`_              ``/icaas/builds``      POST
+`List <#list-builds>`_                 ``/icaas/builds``      GET
+`View <#view-build>`_                  ``/icaas/builds/<id>`` GET
+`Update <#update-build>`_              ``/icaas/builds/<id>`` PUT
+`Delete <#delete-build>`_              ``/icaas/builds/<id>`` DELETE
+====================================== ====================== ======
 
 Create Build
 ------------
@@ -343,10 +340,52 @@ Return Code                 Description
 503 (Service Unavailable)   The server is not currently available
 =========================== ==================================================
 
-Agent Update Build
-------------------
+Delete Build
+------------
 
-Update build status and reason. This is to be used by the ICaaS Agent.
+Delete an existing finished or unfinished build. (This will not delete the
+created image)
+
+.. rubric:: Request
+
+====================== ======
+URI                    Method
+====================== ======
+``/icaas/builds/<id>`` DELETE
+====================== ======
+
+|
+
+======================== ===================================
+Request Header           Value
+======================== ===================================
+X-Auth-Token             User authentication token
+======================== ===================================
+
+.. rubric:: Response
+
+
+=========================== =============================================
+Return Code                 Description
+=========================== =============================================
+204 (No Content)            Request succeeded
+400 (Bad Request)           Invalid or malformed request
+401 (Unauthorized)          Missing or expired user token
+404 (Not Found)             The requested build does not exist
+500 (Internal Server Error) The request cannot be completed because of an
+                            internal error
+503 (Service Unavailable)   The server is not currently available
+=========================== =============================================
+
+Private API Operations
+======================
+
+This is to be used only by the ICaaS Agent.
+
+Update Build
+------------
+
+Update build status and reason.
 
 .. rubric:: Request
 
@@ -379,43 +418,6 @@ details           **✘**            String up to 255 chars
 ================= ================ ==================================
 
 .. rubric:: Response
-
-=========================== =============================================
-Return Code                 Description
-=========================== =============================================
-204 (No Content)            Request succeeded
-400 (Bad Request)           Invalid or malformed request
-401 (Unauthorized)          Missing or expired user token
-404 (Not Found)             The requested build does not exist
-500 (Internal Server Error) The request cannot be completed because of an
-                            internal error
-503 (Service Unavailable)   The server is not currently available
-=========================== =============================================
-
-Delete Build
-------------
-
-Delete an existing finished or unfinished build. (This will not delete the
-created image)
-
-.. rubric:: Request
-
-====================== ======
-URI                    Method
-====================== ======
-``/icaas/builds/<id>`` DELETE
-====================== ======
-
-|
-
-======================== ===================================
-Request Header           Value
-======================== ===================================
-X-Auth-Token             User authentication token
-======================== ===================================
-
-.. rubric:: Response
-
 
 =========================== =============================================
 Return Code                 Description
