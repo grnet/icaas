@@ -1,9 +1,9 @@
-.. _api-guide:
+.. _api-reference:
 
-ICaaS REST API Guide
-^^^^^^^^^^^^^^^^^^^^
+ICaaS REST API Reference
+^^^^^^^^^^^^^^^^^^^^^^^^
 
-This is ICaaSs' REST API Guide.
+This is ICaaSs' REST API Reference.
 
 API Operations
 ==============

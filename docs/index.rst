@@ -12,10 +12,7 @@ ICaaS, the Synnefo users can easily deploy VMs that have a great variety of
 freely available, high quality, open source web applications pre-installed.
 
 The service is developed in `Python <https://www.python.org/>`_ using the
-`Flask <https://flask.pocoo.org>`_ microframework and it heavily depends on the
-`ICaaS Agent <https://www.synnefo.org/docs/icaas-agent/latest/>`_ software
-which is developed independently. For more info about the ICaaS architecture,
-see below.
+`Flask <https://flask.pocoo.org>`_ microframework.
 
 Contents:
 
@@ -24,7 +21,7 @@ Contents:
  
    architecture
    install
-   api_guide
+   api
 
 Contact
 =======
