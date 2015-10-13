@@ -279,4 +279,20 @@ class IcaasTestCase(TestCase):
                                 headers=[('X-AUTH-Token', user.token)])
         self.assertEquals(rv.status_code, 404)
 
+    def test_agent_manifest_fetching(self):
+        """Test the agent manifest fetching"""
+
+        user, build = create_test_build()
+
+        rv = self.client.get('/icaas/builds/agent/%d/%s' %
+                             (build.id, build.nonce))
+        self.assertEquals(rv.status_code, 200)
+        self.assertEquals(json.loads(rv.data)['manifest']['synnefo']['token'],
+                          USER_TOKEN)
+
+        rv = self.client.get('/icaas/builds/agent/%d/%s' %
+                             (build.id, build.nonce))
+        self.assertEquals(rv.status_code, 403)
+
+
 # vim: set sta sts=4 shiftwidth=4 sw=4 et ai :

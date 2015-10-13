@@ -380,7 +380,7 @@ Return Code                 Description
 Private API Operations
 ======================
 
-This is to be used only by the ICaaS Agent.
+Those are to be used only by the ICaaS Agent.
 
 Update Build
 ------------
@@ -430,4 +430,70 @@ Return Code                 Description
                             internal error
 503 (Service Unavailable)   The server is not currently available
 =========================== =============================================
+
+
+Get Manifest
+------------
+
+Get the manifest info
+
+
+==================================== ======
+URI                                  Method
+==================================== ======
+``/icaas/builds/agent/<id>/<nonce>`` GET
+==================================== ======
+
+|
+
+.. rubric:: Response
+
+=========================== =============================================
+Return Code                 Description
+=========================== =============================================
+200 (OK)                    Request succeeded
+400 (Bad Request)           Invalid or malformed request
+403 (Forbidden)             Missing or expired user token
+500 (Internal Server Error) The request cannot be completed because of an
+                            internal error
+503 (Service Unavailable)   The server is not currently available
+=========================== =============================================
+
+Response body contents::
+
+  {
+    "manifest": {
+      <manifest attribute>: <value>,
+      ...
+    }
+  }
+
+Example View of get manifest response:
+
+.. code-block:: javascript
+
+  {
+    "manifest": {
+      "image": {
+        "container": "image",
+        "description": "Bitnami WordPress Stack v4.1.2",
+        "name": "Wordpress",
+        "object": "wordpress.diskdump",
+        "src": "https://downloads.bitnami.com/files/stacks/wordpress/4.1.2-0/bitnami-wordpress-4.1.2-0-ubuntu-14.04.zip"
+      },
+      "log": {
+        "container": "icaas-log",
+        "object": "wordpress.diskdump.log"
+      },
+      "service": {
+        "insecure": "False",
+        "status": "http://icaas.synnefo.org/icaas/builds/agent/1",
+        "token": "993b5673c020476bbcfb0716e50905c1"
+      },
+      "synnefo": {
+	"token": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "url": "https://accounts.synnefo.org/identity/v2.0"
+      }
+    }
+  }
 

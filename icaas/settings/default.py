@@ -50,4 +50,7 @@ ENDPOINT = "http://example.org/icaas"
 # when communicating with the ICaaS service through the endpoint URL
 INSECURE = False
 
+# The time in minutes to wait for the agent to retrieve of the manifest
+MANIFEST_TIMEOUT = 20
+
 # vim: ai ts=4 sts=4 et sw=4 ft=python

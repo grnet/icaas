@@ -19,6 +19,8 @@
 from flask.ext.sqlalchemy import SQLAlchemy
 from datetime import datetime
 from uuid import uuid4
+from base64 import urlsafe_b64encode as b64encode
+
 
 import json
 
@@ -64,6 +66,13 @@ class Build(db.Model):
                                default="build request accepted")
     # ICaaS session token
     token = db.Column(db.String(32))
+
+    # ICaaS agent communication nonce
+    nonce = db.Column(db.String(64), unique=True)
+
+    # Has the nonce been invalidated?
+    nonce_invalid = db.Column(db.Boolean, default=False)
+
     # Index to be used to check if the agent VM timed out
     __table_args__ = (db.Index('agent_alive_index', 'agent_alive', 'created'),)
 
@@ -82,6 +91,7 @@ class Build(db.Model):
         self.image = json.dumps(image)
         self.log = json.dumps(log)
         self.token = str(uuid4()).replace('-', '')
+        self.nonce = b64encode(uuid4().bytes + uuid4().bytes).strip('=')
 
     def is_active(self):
         """Returns True if the build has not finished yet"""

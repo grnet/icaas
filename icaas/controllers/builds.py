@@ -26,7 +26,7 @@ from flask import (
 )
 
 from functools import wraps
-from datetime import datetime
+from datetime import datetime, timedelta
 from base64 import b64encode
 import ConfigParser
 import StringIO
@@ -55,7 +55,7 @@ logger = logging.getLogger(__name__)
 
 
 def _build_to_links(build):
-    url = "%s%s" % (settings.ENDPOINT, build.id)
+    url = "%s/%s" % (settings.ENDPOINT, build.id)
     return [{"href": url, "rel": "self"}]
 
 
@@ -77,58 +77,44 @@ def _build_to_dict(build):
 
 
 def _create_manifest(build, token):
-    """Create manifest file to be injected to the ICaaS Agent VM"""
-
-    class MyConfigParser(ConfigParser.ConfigParser):
-        def set(self, section, option, value=None):
-            """Set an option."""
-            if isinstance(section, unicode):
-                section = section.encode('utf-8')
-            if isinstance(option, unicode):
-                option = option.encode('utf-8')
-            if isinstance(value, unicode):
-                value = value.encode('utf-8')
-
-            return ConfigParser.ConfigParser.set(self, section, option, value)
-
-    config = MyConfigParser()
-    config.add_section("service")
-    config.add_section("synnefo")
-    config.add_section("image")
-    config.add_section("log")
+    """Create manifest to be send to the ICaaS Agent VM"""
 
     image = json.loads(build.image)
     log = json.loads(build.log)
 
-    config.set("image", "src", build.src)
-    config.set("image", "name", build.name)
-    config.set("image", "container", image["container"])
-    config.set("image", "object", image["object"])
-    if "account" in image and image["account"]:
-        config.set("image", "account", image["account"])
+    manifest = {}
+
+    manifest['image'] = {'src': build.src,
+                         'name': build.name,
+                         'container': image['container'],
+                         'object': image['object']}
+
+    if 'account' in image:
+        manifest['image']['account'] = image['account']
     if build.public:
-        config.set("image", "public", True)
+        # All booleans should be made to strings for backwards compatibility.
+        # The agent may expect to find the manifest, either on the disk or by
+        # doing an API call and the ConfigParser that creates the file,
+        # converts everything to strings.
+        manifest['image']['public'] = str(True)
     if len(build.description):
-        config.set("image", "description", build.description)
+        manifest['image']['description'] = build.description
 
-    config.set("service", "status", "%s/builds/agent/%s" %
-                                    (settings.ENDPOINT, build.id))
-    config.set("service", "token", build.token)
-    config.set("service", "insecure", settings.INSECURE)
+    manifest['service'] = {'status': '%s/builds/agent/%s' %
+                                     (settings.ENDPOINT, build.id),
+                           'token': build.token,
+                           'insecure': str(settings.INSECURE)}
+    manifest['synnefo'] = {'url': settings.AUTH_URL,
+                           'token': token}
+    manifest['log'] = {'container': log['container'],
+                       'object': log['object']}
 
-    config.set("synnefo", "url", settings.AUTH_URL)
-    config.set("synnefo", "token", token)
-
-    config.set("log", "container", log["container"])
-    config.set("log", "object", log["object"])
     if "account" in log and log["account"]:
-        config.set("log", "account", log["account"])
+        manifest['log']['account'] = log['account']
 
-    logger.debug("icaas-agent manifest file: %r" % config._sections)
+    logger.debug("icaas-agent manifest : %r" % manifest)
 
-    manifest = StringIO.StringIO()
-    config.write(manifest)
-    return manifest.getvalue()
+    return manifest
 
 
 def login_required(f):
@@ -169,6 +155,65 @@ def login_required(f):
 
         return f(user, *args, **kwargs)
     return decorated_function
+
+
+@builds.route('/icaas/builds/agent/<int:buildid>/<nonce>', methods=['GET'])
+def agent_manifest(buildid, nonce):
+    """Send manifest to the agent"""
+    logger.info("manifest for build %d with nonce %s requested" %
+                (buildid, nonce))
+
+    build = Build.query.filter_by(id=buildid, nonce=nonce,
+                                  deleted=False).first()  # noqa
+    if build is None:
+        raise Error("Manifest retrieval is forbidden", status=403)
+
+    if build.nonce_invalid:
+        logger.warning("Manifest retrieval requested again for build: %d" %
+                       buildid)
+        raise Error("Manifest retrieval is forbidden", status=403)
+
+    user = User.query.filter_by(id=build.user).first()
+    if not user:
+        # This should never happen
+        logger.error("Unknown user: %d for build %d", (build.user, build.id))
+
+    now = datetime.utcnow()
+    expires = build.created + timedelta(minutes=settings.MANIFEST_TIMEOUT)
+    if expires < now:
+        logger.warning("Manifest retrieval expired!")
+        build.nonce_invalid = True
+        build.status = 'ERROR'
+        build.details = 'Agent start up expired'
+        db.session.commit()
+
+        @copy_current_request_context
+        def destroy_agent_wrapper():
+            """Thread that will kill the agent VM"""
+            build = Build.query.filter_by(id=buildid).first()
+            if build is None:
+                # Normally this cannot happen
+                logger.error('Build with id=%d not found!' % build.id)
+                return
+            destroy_agent(build)
+
+        if not settings.DEBUG:
+            thread = threading.Thread(target=destroy_agent_wrapper,
+                                      name="DestroyAgentThread-%d" % build.id)
+            thread.daemon = False
+            thread.start()
+        else:
+            logger.warning('not deleting the agent VM on errors in debug mode')
+        raise Error("Manifest retrieval expired", status=403)
+
+    if not build.is_active():
+        raise Error("Build is not active", status=403)
+
+    build.nonce_invalid = True
+    build.status_details = "Agent booted normally"
+    db.session.commit()
+
+    return jsonify({"manifest": _create_manifest(build, user.token)})
 
 
 @builds.route('/icaas/builds/agent/<int:buildid>', methods=['PUT'])
@@ -416,10 +461,16 @@ def create(user):
             logger.error('Build with id=%d not found!' % build.id)
             return
 
-        manifest = _create_manifest(build, token)
+        # Create the manifest URL
+        config = ConfigParser.ConfigParser()
+        config.add_section("manifest")
+        config.set("manifest", "url", "%s/builds/agent/%d/%s" %
+                   (settings.ENDPOINT, build.id, build.nonce))
+        manifest = StringIO.StringIO()
+        config.write(manifest)
 
         personality = [
-            {'contents': b64encode(manifest), 'path': AGENT_CONFIG,
+            {'contents': b64encode(manifest.getvalue()), 'path': AGENT_CONFIG,
              'owner': 'root', 'group': 'root', 'mode': 0600},
             {'contents': b64encode("empty"), 'path': AGENT_INIT,
              'owner': 'root', 'group': 'root', 'mode': 0600}]
