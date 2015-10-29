@@ -114,7 +114,7 @@ class User(db.Model):
     # Synnefo UUID of the User
     uuid = db.Column(db.String(256), unique=True, index=True)
     # Synnefo User token
-    token = db.Column(db.String(32))
+    token = db.Column(db.String(64))
 
     def __init__(self, uuid):
         """Initialize a User object"""
