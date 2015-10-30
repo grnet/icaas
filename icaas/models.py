@@ -62,7 +62,7 @@ class Build(db.Model):
     # Is the build deleted?
     deleted = db.Column(db.Boolean, default=False, index=True)
     # Detailed description of the current status
-    status_details = db.Column(db.String(256),
+    status_details = db.Column(db.String(16384),
                                default="build request accepted")
     # ICaaS session token
     token = db.Column(db.String(32))
