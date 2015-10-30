@@ -59,6 +59,26 @@ def _build_to_links(build):
     return [{"href": url, "rel": "self"}]
 
 
+def _update_status_details(build, params):
+    details = build.status_details
+    details = json.loads(details) if details else {}
+    curtask = params.get('current-task', None)
+    if curtask:
+        details['current-task'] = curtask
+    agent_progress = params.get("agent-progress", None)
+    if agent_progress:
+        try:
+            details['agent-progress'] = {
+                'current': int(agent_progress['current']),
+                'total': int(agent_progress['total'])}
+        except (ValueError, KeyError, TypeError) as e:
+            logger.warning("Failed to parse 'agent-progress' with error '%s'",
+                           str(e))
+            raise Error("Malformed status details", status=400)
+
+    build.status_details = json.dumps(details)
+
+
 def _build_to_dict(build):
     d = {"id": build.id,
          "name": build.name,
@@ -210,7 +230,7 @@ def agent_manifest(buildid, nonce):
         raise Error("Build is not active", status=403)
 
     build.nonce_invalid = True
-    build.status_details = "Agent booted normally"
+    _update_status_details(build, {'current-task': "Agent booted normally"})
     db.session.commit()
 
     return jsonify({"manifest": _create_manifest(build, user.token)})
@@ -234,7 +254,7 @@ def agent_update(buildid):
     logger.debug("update build %d by agent with params %s" % (buildid, params))
     if params:
         status = params.get("status", None)
-        details = params.get("details", None)
+
         if not status:
             raise Error("Parameter: 'status' is missing", status=400)
         if status not in build.get_status_types():
@@ -248,8 +268,8 @@ def agent_update(buildid):
             raise Error('Agent cannot cancel a build', status=403)
 
         build.status = status
-        if details:
-            build.status_details = details
+
+        _update_status_details(build, params)
         db.session.commit()
 
         # Should we delete the agent VM?
@@ -308,7 +328,7 @@ def update(user, buildid):
         raise Error("Build is not active", status=403)
 
     build.status = 'CANCELED'
-    build.status_details = "Canceled by the user"
+    _update_status_details(build, {'current-task': "Canceled by the user"})
     db.session.commit()
 
     @copy_current_request_context
@@ -440,6 +460,7 @@ def create(user):
                     % '", "'.join(fields), status=400)
 
     build = Build(user.id, name, descr, public, src, None, image, log)
+    _update_status_details(build, {'current-task': "Build request accepted"})
     db.session.add(build)
     db.session.commit()
     logger.debug('created build %r' % build.id)
@@ -487,15 +508,16 @@ def create(user):
                                           personality=personality)
         except ClientError as e:
             build.status = 'ERROR'
-            build.status_details = "icaas agent creation failed: (%d, %s)" \
-                % (e.status, e)
+            msg = "icaas agent creation failed: (%d, %s)" % (e.status, e)
+            _update_status_details(build, {'current-task': msg})
             db.session.commit()
             logger.error("icaas agent creation failed: (%d, %s)"
                          % (e.status, e))
             return
         except Exception as e:
             build.status = 'ERROR'
-            build.status_details = 'icaas agent creation failed'
+            params = {'current-task': "icaas agent creation failed"}
+            _update_status_details(build, params)
             db.session.commit()
             logger.error("icaas agent creation failed: %s" % e)
             return
@@ -503,7 +525,8 @@ def create(user):
         logger.debug("create new icaas agent vm: %s" % agent)
         build.agent = agent['id']
         build.agent_alive = True
-        build.status_details = 'started icaas agent creation'
+        params = {'current-task': "started icaas agent creation"}
+        _update_status_details(build, params)
         db.session.commit()
 
     thread = threading.Thread(target=create_agent,
