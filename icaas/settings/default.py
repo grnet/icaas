@@ -53,4 +53,10 @@ INSECURE = False
 # The time in minutes to wait for the agent to retrieve of the manifest
 MANIFEST_TIMEOUT = 20
 
+# Linear multiplier for the heuristic progress feature
+PROGRESS_HEURISTIC = 6.75
+
+# Interval -in seconds- to report the progress status to the server
+PROGRESS_INTERVAL = 5
+
 # vim: ai ts=4 sts=4 et sw=4 ft=python

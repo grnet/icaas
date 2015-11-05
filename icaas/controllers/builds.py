@@ -104,6 +104,9 @@ def _create_manifest(build, token):
 
     manifest = {}
 
+    manifest['progress'] = {'heuristic': settings.PROGRESS_HEURISTIC,
+                            'interval': settings.PROGRESS_INTERVAL}
+
     manifest['image'] = {'src': build.src,
                          'name': build.name,
                          'container': image['container'],
