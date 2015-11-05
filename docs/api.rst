@@ -123,7 +123,7 @@ Example Create Build Response:
       "name:": "wordpress",
       "src": "https://downloads.bitnami.com/files/stacks/wordpress/4.1.2-0/bitnami-wordpress-4.1.2-0-ubuntu-14.04.zip",
       "status": "CREATING",
-      "status_details": "build request accepted",
+      "status_details": {"details": "started icaas agent creation"},
       "updated": "Wed, 23 Sep 2015 09:57:47 GMT"
     }
   }
@@ -285,7 +285,7 @@ Example View Build response:
       "name:": "wordpress",
       "src": "https://downloads.bitnami.com/files/stacks/wordpress/4.1.2-0/bitnami-wordpress-4.1.2-0-ubuntu-14.04.zip",
       "status": "ERROR",
-      "status_details": "agent: Image creation failed. Check the log for more info",
+      "status_details": {"details: "agent: Image creation failed. Check the log for more info"},
       "updated": "Tue, 22 Sep 2015 16:00:06 GMT"
     }
   }
