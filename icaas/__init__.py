@@ -43,9 +43,10 @@ def create_app(**kwargs):
         else:
             handler = logging.FileHandler(kwargs['logfile'])
 
-        if kwargs['logformat'] is not None:
-            formatter = logging.Formatter(kwargs['logformat'])
-            handler.setFormatter(formatter)
+        if 'logformat' in kwargs:
+            if kwargs['logformat'] is not None:
+                formatter = logging.Formatter(kwargs['logformat'])
+                handler.setFormatter(formatter)
 
         logger.addHandler(handler)
         logger.setLevel(kwargs['loglevel'])
