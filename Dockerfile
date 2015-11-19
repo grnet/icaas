@@ -9,9 +9,9 @@ ADD . /src
 WORKDIR /src
 # Install requirements
 RUN pip install -r requirements.txt
+RUN pip install gunicorn
 
 # Initialize app environment
 RUN python setup.py install
-RUN icaas-manage createdb
 
-CMD ["icaas-manage", "runserver", "-h", "0.0.0.0"]
+CMD icaas-manage createdb && gunicorn --config /etc/icaas/gunicorn.conf "icaas:create_app(logfile=None,loglevel='INFO')"
