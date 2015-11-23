@@ -3,6 +3,7 @@ kamaki
 flask
 Flask-SQLAlchemy
 Flask-Script
-Flask-Testing
 mock
 
+# This is needed for testing:
+# Flask-Testing
