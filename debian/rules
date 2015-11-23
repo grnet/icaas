@@ -2,3 +2,9 @@
 
 %:
 	dh $@ --with python2
+
+override_dh_auto_install:
+	dh_auto_install
+	mkdir -p debian/icaas/etc
+	sed '/^"""/d' icaas/settings/default.py | sed 's/^[A-Z]/#\0/g' > \
+		debian/icaas/etc/icaas.conf
