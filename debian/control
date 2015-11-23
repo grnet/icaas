@@ -2,14 +2,15 @@ Source: icaas
 Section: python
 Priority: optional
 Maintainer: Nikos Skalkotos <skalkoto@grnet.gr>
-Build-Depends: python-all (>=2.5), python-setuptools, python-pip
-Standards-Version: 3.9.3
+Build-Depends: python-all (>=2.5), python-setuptools, python-pip, dh-python,
+ debhelper
+Standards-Version: 3.9.6
 Homepage: https://github.com/grnet/icaas
 Vcs-Git: https://github.com/grnet/icaas.git
 
 Package: icaas
 Architecture: all
 Depends: ${misc:Depends}, ${python:Depends}
-Description: ICaaS - Image Creator as a Service
+Description: Image Creator as a Service
  ICaaS is a Python Flask application meant to provide the functionality of
  snf-image-creator as a service, through the use of Synnefo VMs.
