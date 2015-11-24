@@ -147,7 +147,8 @@ use `snf-image-creator
 conjunction with some bitnami-oriented scripts to prepare and register the
 image on the Synnefo deployment. During its operation, it will also monitor the
 whole process, inform the ICaaS service about the progress as well as upload a
-detailed log file on Pithos.
+detailed log file on Pithos. The overall progress is computed using heuristics
+on the I/O of the system the agent runs on.
 
 The image preparation process will:
 
@@ -165,9 +166,12 @@ The manifest file
 -----------------
 
 The agent software expects to receive a configuration file as input that is
-typically named `manifest.cfg`. This manifest file looks like the one below:
+typically named `manifest.cfg`. This manifest may look like the one below:
 
 .. code-block:: ini 
+
+  [manifest]
+  url = https://icaas.synnefo.org/icaas/builds/1/<random_nonce>
 
   [service]
   status = https://icaas.synnefo.org/icaas/builds/1
@@ -190,12 +194,14 @@ typically named `manifest.cfg`. This manifest file looks like the one below:
   container = icaas
   object = wordpress-4.1.2-0.diskdump.log
 
-The `service` section hosts information on how to contact the ICaaS service to
-report the status. The Authentication URL of a Synnefo deployment and the
-user's token are listed under the `synnefo` section. The `image` section hosts
-the source URL as well as information about the resulting image. Finally, the
-`log` section points to the Pithos location where the log file will be
-uploaded.
+For security reasons, in latest versions of ICaaS, only the `manifest` section
+is present in the manifest. The agent may use the url provided there to fetch
+all the other sections. The `service` section hosts information on how to
+contact the ICaaS service to report the status. The Authentication URL of a
+Synnefo deployment and the user's token are listed under the `synnefo` section.
+The `image` section hosts the source URL as well as information about the
+resulting image. Finally, the `log` section points to the Pithos location where
+the log file will be uploaded.
 
 The Agent VM
 ------------

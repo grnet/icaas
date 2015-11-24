@@ -385,7 +385,7 @@ Those are to be used only by the ICaaS Agent.
 Update Build
 ------------
 
-Update build status and reason.
+Update build status
 
 .. rubric:: Request
 
@@ -406,16 +406,25 @@ X-ICaaS-Token  ICaaS internal authentication token
 Request body contents::
 
    {
-      status: <status>,
-      reason: <reason>
+     status: <status>,
+     details: <reason>,
+     agent-progress: {
+       current: <number>,
+       total: <number>
+     }
    }
 
-================= ================ ==================================
-Build Attribute   Required         Value
-================= ================ ==================================
-status            ✔                "CREATING", "COMPLETED" or "ERROR"
-details           **✘**            String up to 255 chars
-================= ================ ==================================
+====================== ================ ======================================
+Build Attribute        Required         Value
+====================== ================ ======================================
+status                 ✔                "CREATING", "COMPLETED" or "ERROR"
+details                **✘**            String up to 255 chars
+agent-progress         **✘**            Progress made till now (dictionary)
+agent-progress/current **✘**            A number indicating the progress made
+                                        so far
+agent-progress/total   **✘**            A number indicating the total progress
+                                        that needs to be made
+====================== ================ ======================================
 
 .. rubric:: Response
 
@@ -474,6 +483,10 @@ Example View of get manifest response:
 
   {
     "manifest": {
+      "progress": {
+        "heuristic" : 6.75,
+        "interval" : 5,
+      },
       "image": {
         "container": "image",
         "description": "Bitnami WordPress Stack v4.1.2",
