@@ -9,17 +9,7 @@ Installation using Docker
 This guide is written for a Debian -or Debian derived distribution- machine,
 that has `Docker <https://www.docker.com/>`_ installed.
 
-ICaaS is available as a Docker image, through the `GRNET Docker Hub repository
-<https://hub.docker.com/u/grnet/>`_.
-
-To download the image run:
-
-.. code-block:: console
-
-    # docker pull grnet/icaas-service
-
-Alternatively, you can build the Docker Image yourself, using the latest
-source:
+You can build the Docker Image yourself, using the latest source:
 
 .. code-block:: console
 
@@ -104,4 +94,4 @@ Finally, to start the ICaaS service, run:
 
 .. code-block:: console
 
-    # docker run --link icaas-postgres:database --env-file icaas.config -d --restart=always -p 127.0.0.1:8080:8080 -v /etc/gunicorn-icaas.conf:/etc/icaas/gunicorn.conf:ro grnet/icaas-service
+    # docker run --link icaas-postgres:database --env-file icaas.config -d --restart=always -p 127.0.0.1:8080:8080 -v /etc/gunicorn-icaas.conf:/etc/icaas/gunicorn.conf:ro icaas
