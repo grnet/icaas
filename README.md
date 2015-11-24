@@ -7,35 +7,35 @@ service, through the use of [Synnefo](https://synnefo.org) VMs.
 
 For the time being, it only works on [Bitnami](https://bitnami.com/) images.
 
-Installation and requirements
------------------------------
+Project Page
+------------
 
-ICaaS uses [SQLAlchemy](http://www.sqlalchemy.org), so ICaaS can support any
-[SQL backend supported by SQLAlchemy](http://docs.sqlalchemy.org/en/rel_1_0/core/engines.html#database-urls).
-By default it will use a [SQLite](https://www.sqlite.org/) backend.
+Please see the [official ICaaS documentation](http://www.synnefo.org/docs/icaas/latest)
+for more information.
 
-To install ICaaS (ideally in a virtual env):
+Contact
+-------
 
-```
-python setup.py install
-```
+For questions or bug reports you can contact the Synnefo team at the following
+mailing lists:
 
-edit the `icaas/settings/default.py` file to reflect your environment and 
-run:
+        Users list: synnefo@googlegroups.com
+        Developers list: synnefo-devel@googlegroups.com
 
-```
-icaas-manage createdb
-```
-to create the database. Then simply launch the service by running:
-```
-icaas-manage runserver
-```
+Copyright and license
+=====================
 
-If you prefer to use Docker, you can create your own image, using the provided
-Dockerfile:
+Copyright (C) 2015 GRNET S.A.
 
-```
-docker build --tag icaas .
-docker run -p hostport:5000 icaas
-```
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published
+by the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
