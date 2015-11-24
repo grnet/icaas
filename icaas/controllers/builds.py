@@ -62,9 +62,9 @@ def _build_to_links(build):
 def _update_status_details(build, params):
     details = build.status_details
     details = json.loads(details) if details else {}
-    curtask = params.get('current-task', None)
+    curtask = params.get('details', None)
     if curtask:
-        details['current-task'] = curtask
+        details['details'] = curtask
     agent_progress = params.get("agent-progress", None)
     if agent_progress:
         try:
@@ -233,7 +233,7 @@ def agent_manifest(buildid, nonce):
         raise Error("Build is not active", status=403)
 
     build.nonce_invalid = True
-    _update_status_details(build, {'current-task': "Agent booted normally"})
+    _update_status_details(build, {'details': "Agent booted normally"})
     db.session.commit()
 
     return jsonify({"manifest": _create_manifest(build, user.token)})
@@ -331,7 +331,7 @@ def update(user, buildid):
         raise Error("Build is not active", status=403)
 
     build.status = 'CANCELED'
-    _update_status_details(build, {'current-task': "Canceled by the user"})
+    _update_status_details(build, {'details': "Canceled by the user"})
     db.session.commit()
 
     @copy_current_request_context
@@ -463,7 +463,7 @@ def create(user):
                     % '", "'.join(fields), status=400)
 
     build = Build(user.id, name, descr, public, src, None, image, log)
-    _update_status_details(build, {'current-task': "Build request accepted"})
+    _update_status_details(build, {'details': "Build request accepted"})
     db.session.add(build)
     db.session.commit()
     logger.debug('created build %r' % build.id)
@@ -512,14 +512,14 @@ def create(user):
         except ClientError as e:
             build.status = 'ERROR'
             msg = "icaas agent creation failed: (%d, %s)" % (e.status, e)
-            _update_status_details(build, {'current-task': msg})
+            _update_status_details(build, {'details': msg})
             db.session.commit()
             logger.error("icaas agent creation failed: (%d, %s)"
                          % (e.status, e))
             return
         except Exception as e:
             build.status = 'ERROR'
-            params = {'current-task': "icaas agent creation failed"}
+            params = {'details': "icaas agent creation failed"}
             _update_status_details(build, params)
             db.session.commit()
             logger.error("icaas agent creation failed: %s" % e)
@@ -528,7 +528,7 @@ def create(user):
         logger.debug("create new icaas agent vm: %s" % agent)
         build.agent = agent['id']
         build.agent_alive = True
-        params = {'current-task': "started icaas agent creation"}
+        params = {'details': "started icaas agent creation"}
         _update_status_details(build, params)
         db.session.commit()
 
