@@ -15,11 +15,12 @@ manager = Manager(create_app)
 manager.add_command("showurls", ShowUrls())
 manager.add_command("clean", Clean())
 manager.add_option('--log-file', metavar="FILE", dest='logfile', default=None,
-                   help="Write to this log file [None]")
+                   help="Write to this log file [%(default)s]")
 manager.add_option('--log-format', metavar="STRING", dest='logformat',
                    help='Set the log format')
 manager.add_option('--log-config', metavar="FILE", dest='logconfig',
-                   help="Set the log config file to use [None]", default=None)
+                   help="Set the log config file to use [%(default)s]",
+                   default=None)
 manager.add_option('--log-level', metavar="LEVEL", dest='loglevel',
                    help="Set the log level threshold [WARNING]",
                    default=logging.WARNING)
@@ -68,11 +69,12 @@ def showsettings():
 
 @manager.option('-d', '--dry-run', action='store_true',
                 help="don't destroy the timed out builds")
-@manager.option('-m', help='timeout in minutes [60]', default=60,
-                metavar="MINUTES", dest='minutes', type=int)
+@manager.option('-m', help='timeout period in minutes [%(default)d]',
+                default=settings.AGENT_TIMEOUT, metavar="MINUTES",
+                dest='minutes', type=int)
 def timeout(minutes, dry_run):
-    """Put in error state all builds that are running for more than
-    [MINUTES]
+    """Put in error state all builds that are running for more than a specific
+    period of time
     """
 
     def set_error(build):

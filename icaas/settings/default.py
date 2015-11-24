@@ -53,6 +53,9 @@ INSECURE = False
 # The time in minutes to wait for the agent to retrieve of the manifest
 MANIFEST_TIMEOUT = 20
 
+# The time in minutes to wait for the agent to finish the image creation
+AGENT_TIMEOUT = 60
+
 # Linear multiplier for the heuristic progress feature
 PROGRESS_HEURISTIC = 6.75
 
