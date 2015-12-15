@@ -511,24 +511,24 @@ def create(user):
                                           personality=personality)
         except ClientError as e:
             build.status = 'ERROR'
-            msg = "icaas agent creation failed: (%d, %s)" % (e.status, e)
+            msg = "ICaaS agent creation failed: (%d, %s)" % (e.status, e)
             _update_status_details(build, {'details': msg})
             db.session.commit()
-            logger.error("icaas agent creation failed: (%d, %s)"
+            logger.error("ICaaS agent creation failed: (%d, %s)"
                          % (e.status, e))
             return
         except Exception as e:
             build.status = 'ERROR'
-            params = {'details': "icaas agent creation failed"}
+            params = {'details': "ICaaS agent creation failed"}
             _update_status_details(build, params)
             db.session.commit()
-            logger.error("icaas agent creation failed: %s" % e)
+            logger.error("ICaaS agent creation failed: %s" % e)
             return
 
-        logger.debug("create new icaas agent vm: %s" % agent)
+        logger.debug("create new ICaaS agent vm: %s" % agent)
         build.agent = agent['id']
         build.agent_alive = True
-        params = {'details': "started icaas agent creation"}
+        params = {'details': "started ICaaS agent creation"}
         _update_status_details(build, params)
         db.session.commit()
 
